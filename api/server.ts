@@ -1,10 +1,14 @@
 import express from 'express'
+import dotenv from 'dotenv'
 import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import morgan from 'morgan'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
+
+// Load environment variables from .env
+dotenv.config()
 
 // Import middleware
 import { errorHandler, notFound, requestLogger, securityHeaders } from './middleware/errorHandler'

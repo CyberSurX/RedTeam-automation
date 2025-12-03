@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": ".",
+    "outDir": "../dist/api",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "typeRoots": [
+      "./types",
+      "../node_modules/@types"
+    ],
+    "baseUrl": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "strictPropertyInitialization": false
+  },
+  "include": [
+    "./server.ts",
+    "./index.ts",
+    "./middleware/**/*.ts",
+    "./monitoring/**/*.ts",
+    "./routes/**/*.ts",
+    "./utils/**/*.ts",
+    "./types/**/*.ts",
+    "./src/config/**/*.ts",
+    "./src/entities/**/*.ts",
+    "./src/services/**/*.ts",
+    "./src/controllers/**/*.ts"
+  ],
+  "exclude": [
+    "../node_modules",
+    "tests",
+    "tests/**",
+    "./tests",
+    "./tests/**",
+    "tests_disabled",
+    "tests_disabled/**",
+    "./tests_disabled",
+    "./tests_disabled/**",
+    "./app.ts"
+  ]
+}

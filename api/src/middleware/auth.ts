@@ -3,7 +3,7 @@ import { verifyAccessToken, hasPermission } from '../config/auth';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    userId: string;
+    id: string;
     email: string;
     role: string;
     permissions: string[];

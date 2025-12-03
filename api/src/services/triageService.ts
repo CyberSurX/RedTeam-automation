@@ -125,7 +125,7 @@ class TriageService {
         [jobId]
       );
 
-      const findings = findingsResult.rows;
+      const findings = findingsResult.rows as any[];
       result.statistics.total = findings.length;
 
       // Process each finding
@@ -143,12 +143,12 @@ class TriageService {
           result.statistics.duplicates++;
         } else {
           result.statistics.confirmed++;
-          result.statistics.severityDistribution[processedFinding.triagedSeverity]++;
+          (result.statistics.severityDistribution as any)[processedFinding.triagedSeverity]++;
         }
       }
 
       // Generate recommendations
-      result.recommendations = this.generateRecommendations(result.processedFindings);
+      result.recommendations = this.generateRecommendations(result.processedFindings) as any;
 
       // Log triage completion
       logger.info(`Triage completed for job ${jobId}`, {
@@ -231,7 +231,7 @@ class TriageService {
     return analysis;
   }
 
-  private checkFalsePositive(finding: any, config: TriageConfig): {isFalsePositive: boolean, reason: string} {
+  private checkFalsePositive(finding: any, config: TriageConfig): { isFalsePositive: boolean, reason: string } {
     // Check against configured false positive rules
     for (const rule of config.falsePositiveRules) {
       if (finding.vulnerability_type === rule.type || finding.title.includes(rule.pattern)) {
@@ -270,7 +270,7 @@ class TriageService {
     return { isFalsePositive: false, reason: '' };
   }
 
-  private async checkDuplicate(finding: any): Promise<{isDuplicate: boolean, reason: string, duplicateId?: string}> {
+  private async checkDuplicate(finding: any): Promise<{ isDuplicate: boolean, reason: string, duplicateId?: string }> {
     try {
       // Look for similar findings in the same program
       const similarResult = await query(
@@ -286,7 +286,7 @@ class TriageService {
         [finding.program_id, finding.vulnerability_type, finding.id]
       );
 
-      for (const similar of similarResult.rows) {
+      for (const similar of similarResult.rows as any[]) {
         const similarity = this.calculateSimilarity(finding, similar);
         if (similarity > 0.8) { // 80% similarity threshold
           return {
@@ -339,24 +339,24 @@ class TriageService {
   private stringSimilarity(str1: string, str2: string): number {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
-    
+
     if (longer.length === 0) return 1.0;
-    
+
     const editDistance = this.levenshteinDistance(longer, shorter);
     return (longer.length - editDistance) / longer.length;
   }
 
   private levenshteinDistance(str1: string, str2: string): number {
     const matrix = [];
-    
+
     for (let i = 0; i <= str2.length; i++) {
       matrix[i] = [i];
     }
-    
+
     for (let j = 0; j <= str1.length; j++) {
       matrix[0][j] = j;
     }
-    
+
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
         if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -370,14 +370,14 @@ class TriageService {
         }
       }
     }
-    
+
     return matrix[str2.length][str1.length];
   }
 
-  private adjustSeverity(finding: any): {adjusted: boolean, newSeverity: string, reason: string} {
+  private adjustSeverity(finding: any): { adjusted: boolean, newSeverity: string, reason: string } {
     // Map vulnerability type to standard severity
-    const mappedSeverity = this.severityMapping[finding.vulnerability_type] || finding.severity;
-    
+    const mappedSeverity = (this.severityMapping as any)[finding.vulnerability_type] || finding.severity;
+
     if (mappedSeverity !== finding.severity) {
       return {
         adjusted: true,
@@ -410,11 +410,11 @@ class TriageService {
   private increaseSeverity(currentSeverity: string): string {
     const severityOrder = ['info', 'low', 'medium', 'high', 'critical'];
     const currentIndex = severityOrder.indexOf(currentSeverity);
-    
+
     if (currentIndex < severityOrder.length - 1) {
       return severityOrder[currentIndex + 1];
     }
-    
+
     return currentSeverity;
   }
 
@@ -458,13 +458,13 @@ class TriageService {
     }
   }
 
-  private generateRecommendations(processedFindings: any[]): Array<{type: string, priority: string, description: string, affectedFindings: string[]}> {
+  private generateRecommendations(processedFindings: any[]): Array<{ type: string, priority: string, description: string, affectedFindings: string[] }> {
     const recommendations = [];
-    
+
     // Group findings by type
     const findingsByType = processedFindings.reduce((acc, finding) => {
       if (!finding.isFalsePositive && !finding.isDuplicate) {
-        acc[finding.triagedSeverity] = (acc[finding.triagedSeverity] || 0) + 1;
+        (acc as any)[finding.triagedSeverity] = ((acc as any)[finding.triagedSeverity] || 0) + 1;
       }
       return acc;
     }, {});

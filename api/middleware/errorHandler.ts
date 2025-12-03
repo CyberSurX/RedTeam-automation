@@ -8,8 +8,9 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  let error = { ...err }
-  error.message = err.message
+  const anyErr = err as any
+  let error: any = { ...anyErr }
+  error.message = anyErr.message
 
   // Log error
   apiLogger.error('Error occurred:', {
@@ -22,29 +23,29 @@ export const errorHandler = (
   })
 
   // Mongoose bad ObjectId
-  if (err.name === 'CastError') {
+  if (anyErr.name === 'CastError') {
     const message = 'Resource not found'
     error = new AppError(message, 404)
   }
 
   // Mongoose duplicate key
-  if (err.name === 'MongoServerError' && err.code === 11000) {
+  if (anyErr.name === 'MongoServerError' && anyErr.code === 11000) {
     const message = 'Duplicate field value entered'
     error = new AppError(message, 400)
   }
 
   // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map((val: any) => val.message)
+  if (anyErr.name === 'ValidationError') {
+    const message = Object.values(anyErr.errors || {}).map((val: any) => val.message)
     error = new AppError(message.join(', '), 400)
   }
 
   // Prisma errors
-  if (err.name === 'PrismaClientKnownRequestError') {
-    if (err.code === 'P2002') {
+  if (anyErr.name === 'PrismaClientKnownRequestError') {
+    if (anyErr.code === 'P2002') {
       const message = 'Unique constraint violation'
       error = new AppError(message, 409)
-    } else if (err.code === 'P2025') {
+    } else if (anyErr.code === 'P2025') {
       const message = 'Record not found'
       error = new AppError(message, 404)
     } else {
@@ -56,7 +57,7 @@ export const errorHandler = (
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(process.env.NODE_ENV === 'development' && { stack: anyErr.stack }),
   })
 }
 

@@ -1,0 +1,17 @@
+-- Insert sample users
+INSERT INTO "users" ("id", "email", "password", "name", "role", "createdAt", "updatedAt") VALUES
+    ('550e8400-e29b-41d4-a716-446655440001', 'admin@redteam.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PJ/..G', 'Admin User', 'ADMIN', NOW(), NOW()),
+    ('550e8400-e29b-41d4-a716-446655440002', 'researcher@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PJ/..G', 'Security Researcher', 'RESEARCHER', NOW(), NOW()),
+    ('550e8400-e29b-41d4-a716-446655440003', 'user@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PJ/..G', 'Regular User', 'USER', NOW(), NOW());
+
+-- Insert sample programs
+INSERT INTO "programs" ("id", "name", "description", "status", "scope", "rewards", "rules", "startDate", "endDate", "createdBy", "createdAt", "updatedAt") VALUES
+    ('660e8400-e29b-41d4-a716-446655440001', 'Web Application Security Program', 'Comprehensive bug bounty program for our web applications including the main dashboard, API endpoints, and user management systems.', 'ACTIVE', 'app.redteam-automation.com, api.redteam-automation.com', '{"min": 100, "max": 5000, "currency": "USD"}', 'Focus on XSS, SQL injection, authentication bypass, and privilege escalation. Out of scope: Third-party integrations, physical security, social engineering.', '2024-01-01 00:00:00', '2024-12-31 23:59:59', '550e8400-e29b-41d4-a716-446655440001', NOW(), NOW()),
+    
+    ('660e8400-e29b-41d4-a716-446655440002', 'Mobile Application Security', 'Security testing program for our iOS and Android mobile applications.', 'ACTIVE', 'iOS app version 2.0+, Android app version 2.0+', '{"min": 150, "max": 3000, "currency": "USD"}', 'Test for insecure data storage, weak encryption, improper session handling, and reverse engineering vulnerabilities. Include jailbreak/root detection bypass.', '2024-02-01 00:00:00', '2024-11-30 23:59:59', '550e8400-e29b-41d4-a716-446655440001', NOW(), NOW()),
+    
+    ('660e8400-e29b-41d4-a716-446655440003', 'API Security Testing', 'Comprehensive API security assessment including GraphQL and REST endpoints.', 'DRAFT', 'api.redteam-automation.com, graphql.redteam-automation.com', '{"min": 200, "max": 4000, "currency": "USD"}', 'Focus on injection attacks, broken authentication, excessive data exposure, and rate limiting bypass. Test all API versions.', '2024-03-01 00:00:00', '2024-10-31 23:59:59', '550e8400-e29b-41d4-a716-446655440002', NOW(), NOW()),
+    
+    ('660e8400-e29b-41d4-a716-446655440004', 'Infrastructure Security Assessment', 'Network and infrastructure security testing including cloud services and server configurations.', 'PAUSED', 'AWS infrastructure, load balancers, databases, CI/CD pipeline', '{"min": 300, "max": 10000, "currency": "USD"}', 'Test for misconfigurations, weak encryption, open ports, and privilege escalation in cloud infrastructure. Include container security assessment.', '2024-01-15 00:00:00', '2024-09-15 23:59:59', '550e8400-e29b-41d4-a716-446655440002', NOW(), NOW()),
+    
+    ('660e8400-e29b-41d4-a716-446655440005', 'Blockchain Security Program', 'Smart contract and blockchain security testing for our DeFi protocols.', 'COMPLETED', 'Smart contracts on Ethereum, Polygon, and BSC', '{"min": 500, "max": 20000, "currency": "USD"}', 'Focus on reentrancy, integer overflow, access control, and economic attacks. Include formal verification where possible.', '2023-06-01 00:00:00', '2023-12-31 23:59:59', '550e8400-e29b-41d4-a716-446655440001', NOW(), NOW());

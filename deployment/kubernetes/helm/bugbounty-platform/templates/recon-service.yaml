@@ -1,0 +1,201 @@
+{{/*
+Create the recon service deployment
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-recon-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: recon-service
+spec:
+  replicas: {{ .Values.reconService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: recon-service
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.reconService.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "bugbounty-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: recon-service
+    spec:
+      {{- include "bugbounty-platform.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "bugbounty-platform.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.reconService.podSecurityContext | nindent 8 }}
+      containers:
+        - name: recon-service
+          securityContext:
+            {{- toYaml .Values.reconService.securityContext | nindent 12 }}
+          image: {{ include "bugbounty-platform.image" (dict "image" .Values.reconService.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.reconService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.reconService.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            {{- if .Values.livenessProbe.enabled }}
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            {{- end }}
+          readinessProbe:
+            {{- if .Values.readinessProbe.enabled }}
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.reconService.resources | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .Values.reconService.service.targetPort | quote }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ include "bugbounty-platform.database.user" . }}:$(POSTGRES_PASSWORD)@{{ include "bugbounty-platform.database.host" . }}:{{ include "bugbounty-platform.database.port" . }}/{{ include "bugbounty-platform.database.name" . }}"
+            - name: REDIS_URL
+              value: "redis://default:$(REDIS_PASSWORD)@{{ include "bugbounty-platform.redis.host" . }}:{{ include "bugbounty-platform.redis.port" . }}"
+            - name: AMASS_ENABLED
+              value: {{ .Values.reconService.config.tools.amass.enabled | quote }}
+            - name: AMASS_CONFIG_PATH
+              value: {{ .Values.reconService.config.tools.amass.configPath | quote }}
+            - name: SUBFINDER_ENABLED
+              value: {{ .Values.reconService.config.tools.subfinder.enabled | quote }}
+            - name: SUBFINDER_CONFIG_PATH
+              value: {{ .Values.reconService.config.tools.subfinder.configPath | quote }}
+            - name: ASSETFINDER_ENABLED
+              value: {{ .Values.reconService.config.tools.assetfinder.enabled | quote }}
+            - name: HTTPX_ENABLED
+              value: {{ .Values.reconService.config.tools.httpx.enabled | quote }}
+            - name: HTTPX_THREADS
+              value: {{ .Values.reconService.config.tools.httpx.threads | quote }}
+            - name: RATE_LIMIT_RPS
+              value: {{ .Values.reconService.config.rateLimiting.requestsPerSecond | quote }}
+            - name: MAX_CONCURRENT_JOBS
+              value: {{ .Values.reconService.config.rateLimiting.maxConcurrentJobs | quote }}
+            - name: RESULTS_RETENTION_DAYS
+              value: {{ .Values.reconService.config.storage.resultsRetentionDays | quote }}
+            - name: MAX_STORAGE_SIZE
+              value: {{ .Values.reconService.config.storage.maxStorageSize | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bugbounty-platform.fullname" . }}-postgresql
+                  key: password
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bugbounty-platform.fullname" . }}-redis
+                  key: password
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.reconService.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: amass-config
+              mountPath: /etc/amass
+              readOnly: true
+            - name: subfinder-config
+              mountPath: /etc/subfinder
+              readOnly: true
+            {{- with .Values.reconService.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: amass-config
+          configMap:
+            name: {{ include "bugbounty-platform.fullname" . }}-amass-config
+            optional: true
+        - name: subfinder-config
+          configMap:
+            name: {{ include "bugbounty-platform.fullname" . }}-subfinder-config
+            optional: true
+        {{- with .Values.reconService.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.reconService.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.reconService.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.reconService.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bugbounty-platform.reconService.serviceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: recon-service
+spec:
+  type: {{ .Values.reconService.service.type }}
+  ports:
+    - port: {{ .Values.reconService.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "bugbounty-platform.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: recon-service
+---
+{{- if .Values.reconService.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-recon-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: recon-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "bugbounty-platform.fullname" . }}-recon-service
+  minReplicas: {{ .Values.reconService.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.reconService.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.reconService.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.reconService.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.reconService.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.reconService.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

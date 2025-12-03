@@ -15,6 +15,7 @@ export interface ReconConfig {
   timeout: number;
   threads: number;
   outputFormat: 'json' | 'txt' | 'xml';
+  userId: string;
 }
 
 export interface ReconResult {
@@ -56,7 +57,7 @@ class ReconService {
 
   async startRecon(programId: string, config: ReconConfig): Promise<string> {
     const jobId = uuidv4();
-    
+
     try {
       // Create job in database
       await query(
@@ -139,7 +140,7 @@ class ReconService {
     try {
       const command = `${this.tools.subfinder} -d ${domain} -t ${threads} -silent`;
       const { stdout } = await execAsync(command, { timeout: 300000 }); // 5 minutes
-      
+
       return stdout.split('\n')
         .map(line => line.trim())
         .filter(line => line && line.includes('.'));
@@ -153,7 +154,7 @@ class ReconService {
     try {
       const command = `${this.tools.amass} enum -d ${domain} -max-depth ${depth} -timeout ${timeout} -silent`;
       const { stdout } = await execAsync(command, { timeout: (timeout + 60) * 1000 });
-      
+
       return stdout.split('\n')
         .map(line => line.trim())
         .filter(line => line && line.includes('.'));
@@ -163,17 +164,17 @@ class ReconService {
     }
   }
 
-  private async runNaabu(hosts: string[], threads: number): Promise<Array<{host: string, port: number, service: string, version: string}>> {
+  private async runNaabu(hosts: string[], threads: number): Promise<Array<{ host: string, port: number, service: string, version: string }>> {
     try {
       const hostsFile = `/tmp/hosts_${Date.now()}.txt`;
       require('fs').writeFileSync(hostsFile, hosts.join('\n'));
-      
+
       const command = `${this.tools.naabu} -list ${hostsFile} -t ${threads} -silent -json`;
       const { stdout } = await execAsync(command, { timeout: 600000 }); // 10 minutes
-      
+
       // Clean up temp file
       require('fs').unlinkSync(hostsFile);
-      
+
       const results = stdout.split('\n')
         .filter(line => line.trim())
         .map(line => {
@@ -190,7 +191,7 @@ class ReconService {
           }
         })
         .filter(result => result !== null);
-      
+
       return results;
     } catch (error) {
       logger.error(`Naabu error: ${error}`);
@@ -198,17 +199,17 @@ class ReconService {
     }
   }
 
-  private async runHttpx(hosts: string[], threads: number): Promise<Array<{url: string, method: string, status: number, title: string}>> {
+  private async runHttpx(hosts: string[], threads: number): Promise<Array<{ url: string, method: string, status: number, title: string }>> {
     try {
       const hostsFile = `/tmp/hosts_${Date.now()}.txt`;
       require('fs').writeFileSync(hostsFile, hosts.join('\n'));
-      
+
       const command = `${this.tools.httpx} -list ${hostsFile} -t ${threads} -silent -json -title`;
       const { stdout } = await execAsync(command, { timeout: 600000 }); // 10 minutes
-      
+
       // Clean up temp file
       require('fs').unlinkSync(hostsFile);
-      
+
       const results = stdout.split('\n')
         .filter(line => line.trim())
         .map(line => {
@@ -225,7 +226,7 @@ class ReconService {
           }
         })
         .filter(result => result !== null);
-      
+
       return results;
     } catch (error) {
       logger.error(`Httpx error: ${error}`);
@@ -233,15 +234,15 @@ class ReconService {
     }
   }
 
-  private async runWappalyzer(urls: Array<{url: string}>): Promise<Array<{name: string, version: string, confidence: number}>> {
+  private async runWappalyzer(urls: Array<{ url: string }>): Promise<Array<{ name: string, version: string, confidence: number }>> {
     try {
-      const technologies: Array<{name: string, version: string, confidence: number}> = [];
-      
+      const technologies: Array<{ name: string, version: string, confidence: number }> = [];
+
       for (const url of urls.slice(0, 3)) { // Limit to 3 URLs to avoid timeout
         try {
           const command = `${this.tools.wappalyzer} ${url.url} --json`;
           const { stdout } = await execAsync(command, { timeout: 60000 }); // 1 minute per URL
-          
+
           const data = JSON.parse(stdout);
           if (data.technologies) {
             technologies.push(...data.technologies.map((tech: any) => ({
@@ -254,7 +255,7 @@ class ReconService {
           logger.error(`Wappalyzer error for ${url.url}: ${error}`);
         }
       }
-      
+
       return technologies;
     } catch (error) {
       logger.error(`Wappalyzer error: ${error}`);
@@ -323,7 +324,7 @@ class ReconService {
         return null;
       }
 
-      return result.rows[0].results;
+      return (result.rows[0] as any).results;
     } catch (error) {
       logger.error(`Failed to get recon results: ${error}`);
       return null;

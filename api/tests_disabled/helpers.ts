@@ -1,4 +1,4 @@
-import { pool } from '../src/database'
+import { query as pool } from '../src/config/database'
 import bcrypt from 'bcrypt'
 
 export async function createTestUser() {
@@ -15,12 +15,12 @@ export async function getAuthToken(email: string, password: string) {
   const jwt = require('jsonwebtoken')
   const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
   const user = result.rows[0]
-  
+
   if (!user) throw new Error('User not found')
-  
+
   const isValid = await bcrypt.compare(password, user.password_hash)
   if (!isValid) throw new Error('Invalid password')
-  
+
   return jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
     process.env.JWT_SECRET || 'test-secret',

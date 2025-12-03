@@ -1,0 +1,35 @@
+{
+  "name": "bug-bounty-revenue-tester",
+  "version": "1.0.0",
+  "description": "Automated bug bounty revenue validation for HackerOne, Bugcrowd, and DevPost",
+  "main": "test-revenue.js",
+  "scripts": {
+    "start": "node test-revenue.js",
+    "dev": "ts-node test-revenue.ts",
+    "test": "npm run dev",
+    "validate": "./revenue-validation.sh",
+    "build": "tsc",
+    "clean": "rm -rf dist test-results"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "bug-bounty",
+    "security",
+    "automation",
+    "hackerone",
+    "bugcrowd",
+    "devpost",
+    "revenue",
+    "vulnerability"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

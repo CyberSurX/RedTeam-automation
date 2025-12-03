@@ -13,31 +13,31 @@ export type ReportType = 'vulnerability_assessment' | 'penetration_test' | 'secu
 @Index(['created_by_id', 'created_at'])
 export class Report {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column()
-  title: string
+  title!: string
 
   @Column({ type: 'text' })
-  summary: string
+  summary!: string
 
   @Column({ type: 'text', nullable: true })
-  executive_summary: string
+  executive_summary!: string
 
   @Column({ type: 'text', nullable: true })
-  methodology: string
+  methodology!: string
 
   @Column({ type: 'text', nullable: true })
-  scope: string
+  scope!: string
 
   @Column({ type: 'enum', enum: ['draft', 'submitted', 'reviewed', 'approved', 'rejected'], default: 'draft' })
-  status: ReportStatus
+  status!: ReportStatus
 
   @Column({ type: 'enum', enum: ['vulnerability_assessment', 'penetration_test', 'security_audit', 'compliance_check'] })
-  type: ReportType
+  type!: ReportType
 
   @Column({ type: 'jsonb', nullable: true })
-  target_info: {
+  target_info!: {
     name: string
     url: string
     ip_range: string[]
@@ -45,7 +45,7 @@ export class Report {
   }
 
   @Column({ type: 'jsonb', nullable: true })
-  risk_assessment: {
+  risk_assessment!: {
     overall_risk: 'critical' | 'high' | 'medium' | 'low'
     critical_count: number
     high_count: number
@@ -55,35 +55,35 @@ export class Report {
   }
 
   @Column({ type: 'jsonb', nullable: true })
-  recommendations: {
+  recommendations!: {
     immediate: string[]
     short_term: string[]
     long_term: string[]
   }
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>
+  metadata!: Record<string, unknown>
 
   @Column({ type: 'timestamp', nullable: true })
-  submitted_at: Date
+  submitted_at!: Date
 
   @Column({ type: 'timestamp', nullable: true })
-  reviewed_at: Date
+  reviewed_at!: Date
 
   @Column({ type: 'timestamp', nullable: true })
-  approved_at: Date
+  approved_at!: Date
 
   @CreateDateColumn()
-  created_at: Date
+  created_at!: Date
 
   @UpdateDateColumn()
-  updated_at: Date
+  updated_at!: Date
 
   @ManyToOne(() => User, user => user.reports)
-  created_by: User
+  created_by!: User
 
   @OneToMany(() => Finding, finding => finding.report)
-  findings: Finding[]
+  findings!: Finding[]
 
   // Get total findings count
   getTotalFindings(): number {

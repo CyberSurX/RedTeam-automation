@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { app } from '../src/app'
-import { pool } from '../src/database'
+import { query as pool } from '../src/config/database'
 import { createTestUser, getAuthToken, createTestProgram } from './helpers'
 
 describe('Programs API', () => {
@@ -24,7 +24,7 @@ describe('Programs API', () => {
     it('should get all programs', async () => {
       const response = await app.request('/api/programs', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -56,7 +56,7 @@ describe('Programs API', () => {
 
       const response = await app.request('/api/programs', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -78,7 +78,7 @@ describe('Programs API', () => {
 
       const response = await app.request('/api/programs', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -95,7 +95,7 @@ describe('Programs API', () => {
     it('should get program by id', async () => {
       const response = await app.request(`/api/programs/${testProgram.id}`, {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -109,7 +109,7 @@ describe('Programs API', () => {
     it('should return 404 for non-existent program', async () => {
       const response = await app.request('/api/programs/99999', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -129,7 +129,7 @@ describe('Programs API', () => {
 
       const response = await app.request(`/api/programs/${testProgram.id}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -147,10 +147,10 @@ describe('Programs API', () => {
   describe('DELETE /api/programs/:id', () => {
     it('should delete program', async () => {
       const tempProgram = await createTestProgram()
-      
+
       const response = await app.request(`/api/programs/${tempProgram.id}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -161,7 +161,7 @@ describe('Programs API', () => {
     it('should return 404 for non-existent program', async () => {
       const response = await app.request('/api/programs/99999', {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })

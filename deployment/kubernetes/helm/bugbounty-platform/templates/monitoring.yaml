@@ -1,0 +1,232 @@
+{{/*
+Create Prometheus monitoring configuration
+*/}}
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-api-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api-gateway
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-recon-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: recon-service
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: recon-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-scanning-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scanning-service
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scanning-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-exploitation-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: exploitation-service
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: exploitation-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-triage-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: triage-service
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: triage-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-reporting-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reporting-service
+spec:
+  selector:
+    matchLabels:
+      {{- include "bugbounty-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: reporting-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+{{/*
+Create Prometheus alerting rules
+*/}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+    prometheus: kube-prometheus
+spec:
+  groups:
+    - name: bugbounty-platform
+      interval: 30s
+      rules:
+        - alert: BugBountyPlatformServiceDown
+          expr: up{job=~"bugbounty-platform.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: platform
+          annotations:
+            summary: "Bug Bounty Platform service is down"
+            description: "Service {{ $labels.job }} has been down for more than 5 minutes."
+            
+        - alert: BugBountyPlatformHighErrorRate
+          expr: rate(http_requests_total{job=~"bugbounty-platform.*",status=~"5.."}[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: platform
+          annotations:
+            summary: "High error rate in Bug Bounty Platform"
+            description: "Service {{ $labels.job }} has error rate above 10% for more than 5 minutes."
+            
+        - alert: BugBountyPlatformHighLatency
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~"bugbounty-platform.*"}[5m])) > 2
+          for: 5m
+          labels:
+            severity: warning
+            component: platform
+          annotations:
+            summary: "High latency in Bug Bounty Platform"
+            description: "Service {{ $labels.job }} has 95th percentile latency above 2 seconds for more than 5 minutes."
+            
+        - alert: BugBountyPlatformHighMemoryUsage
+          expr: container_memory_usage_bytes{pod=~"bugbounty-platform.*"} / container_spec_memory_limit_bytes > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            component: platform
+          annotations:
+            summary: "High memory usage in Bug Bounty Platform"
+            description: "Pod {{ $labels.pod }} is using more than 90% of its memory limit."
+            
+        - alert: BugBountyPlatformHighCPUUsage
+          expr: rate(container_cpu_usage_seconds_total{pod=~"bugbounty-platform.*"}[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            component: platform
+          annotations:
+            summary: "High CPU usage in Bug Bounty Platform"
+            description: "Pod {{ $labels.pod }} is using more than 80% of its CPU limit."
+            
+        - alert: BugBountyPlatformDatabaseConnectionFailed
+          expr: increase(db_connection_failures_total[5m]) > 5
+          for: 2m
+          labels:
+            severity: critical
+            component: database
+          annotations:
+            summary: "Database connection failures"
+            description: "More than 5 database connection failures in the last 5 minutes."
+            
+        - alert: BugBountyPlatformRedisConnectionFailed
+          expr: increase(redis_connection_failures_total[5m]) > 5
+          for: 2m
+          labels:
+            severity: critical
+            component: cache
+          annotations:
+            summary: "Redis connection failures"
+            description: "More than 5 Redis connection failures in the last 5 minutes."
+            
+        - alert: BugBountyPlatformScanQueueBacklog
+          expr: bugbounty_scan_queue_size > 100
+          for: 15m
+          labels:
+            severity: warning
+            component: scanning
+          annotations:
+            summary: "Scan queue backlog"
+            description: "Scan queue has more than 100 pending items for more than 15 minutes."
+            
+        - alert: BugBountyPlatformVulnerabilityCritical
+          expr: increase(bugbounty_critical_vulnerabilities_found_total[1h]) > 0
+          for: 0m
+          labels:
+            severity: critical
+            component: security
+          annotations:
+            summary: "Critical vulnerability detected"
+            description: "Critical vulnerability found in target {{ $labels.target }}."
+            
+        - alert: BugBountyPlatformReportGenerationFailed
+          expr: increase(bugbounty_report_generation_failures_total[1h]) > 3
+          for: 0m
+          labels:
+            severity: warning
+            component: reporting
+          annotations:
+            summary: "Report generation failures"
+            description: "More than 3 report generation failures in the last hour."

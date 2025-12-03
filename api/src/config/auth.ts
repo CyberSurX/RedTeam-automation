@@ -1,40 +1,42 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-jwt-refresh-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
+const JWT_SECRET: string = process.env.JWT_SECRET || 'dev-jwt-secret-key-change-in-production'
+const JWT_REFRESH_SECRET: string = process.env.JWT_REFRESH_SECRET || 'dev-jwt-refresh-secret-key-change-in-production'
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '15m') as unknown as number
+const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as unknown as number
+const BCRYPT_ROUNDS: number = parseInt(process.env.BCRYPT_ROUNDS || '12')
 
 export interface JWTPayload {
-  userId: string;
+  id: string;
   email: string;
   role: string;
   permissions: string[];
 }
 
 export interface RefreshTokenPayload {
-  userId: string;
+  id: string;
   tokenVersion: number;
 }
 
 // Generate access token
 export function generateAccessToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
+  const options: jwt.SignOptions = {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'bugbounty-platform',
     audience: 'bugbounty-users'
-  });
+  }
+  return jwt.sign(payload, JWT_SECRET, options);
 }
 
 // Generate refresh token
 export function generateRefreshToken(payload: RefreshTokenPayload): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, {
+  const options: jwt.SignOptions = {
     expiresIn: JWT_REFRESH_EXPIRES_IN,
     issuer: 'bugbounty-platform',
     audience: 'bugbounty-users'
-  });
+  }
+  return jwt.sign(payload, JWT_REFRESH_SECRET, options);
 }
 
 // Verify access token

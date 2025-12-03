@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Search, 
-  Globe, 
-  Target, 
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Search,
+  Globe,
+  Target,
   Clock,
   CheckCircle,
   XCircle,
@@ -23,7 +23,7 @@ interface ReconJob {
   id: string;
   programId: string;
   programName: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused';
   progress: number;
   startTime: string;
   endTime?: string;
@@ -170,11 +170,11 @@ export const Reconnaissance: React.FC = () => {
     };
 
     setJobs([newJob, ...jobs]);
-    
+
     // Simulate job starting
     setTimeout(() => {
-      setJobs(prev => prev.map(job => 
-        job.id === newJob.id 
+      setJobs(prev => prev.map(job =>
+        job.id === newJob.id
           ? { ...job, status: 'running', progress: 10 }
           : job
       ));
@@ -184,40 +184,40 @@ export const Reconnaissance: React.FC = () => {
   };
 
   const handlePauseJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
+    setJobs(prev => prev.map(job =>
+      job.id === jobId
         ? { ...job, status: 'paused' }
         : job
     ));
   };
 
   const handleResumeJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
+    setJobs(prev => prev.map(job =>
+      job.id === jobId
         ? { ...job, status: 'running' }
         : job
     ));
   };
 
   const handleStopJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
+    setJobs(prev => prev.map(job =>
+      job.id === jobId
         ? { ...job, status: 'failed', progress: job.progress }
         : job
     ));
   };
 
   const handleRestartJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { 
-            ...job, 
-            status: 'pending', 
-            progress: 0, 
-            startTime: new Date().toISOString(),
-            results: { subdomains: 0, openPorts: 0, technologies: 0, endpoints: 0 },
-            logs: []
-          }
+    setJobs(prev => prev.map(job =>
+      job.id === jobId
+        ? {
+          ...job,
+          status: 'pending',
+          progress: 0,
+          startTime: new Date().toISOString(),
+          results: { subdomains: 0, openPorts: 0, technologies: 0, endpoints: 0 },
+          logs: []
+        }
         : job
     ));
   };
@@ -269,7 +269,7 @@ export const Reconnaissance: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Configure Reconnaissance Scan</h2>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Target Domain</label>
@@ -407,9 +407,9 @@ export const Reconnaissance: React.FC = () => {
                       <RotateCcw className="h-3 w-3" />
                     </Button>
                   )}
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => setSelectedJob(selectedJob === job.id ? null : job.id)}
                   >
                     <Eye className="h-3 w-3" />
@@ -417,7 +417,7 @@ export const Reconnaissance: React.FC = () => {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               <div className="space-y-4">
                 {/* Progress */}
@@ -478,7 +478,7 @@ export const Reconnaissance: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    
+
                     <div className="flex justify-end space-x-2 mt-3">
                       <Button size="sm" variant="outline">
                         <Download className="h-3 w-3 mr-1" />

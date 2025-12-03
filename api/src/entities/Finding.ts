@@ -16,7 +16,7 @@ export type FindingType = 'xss' | 'sql_injection' | 'authentication_bypass' | 'a
 @Index(['program_id', 'status'])
 export class Finding {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column()
   title: string

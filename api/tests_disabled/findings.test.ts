@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { app } from '../src/app'
-import { pool } from '../src/database'
+import { query as pool } from '../src/config/database'
 import { createTestUser, getAuthToken, createTestProgram, createTestFinding } from './helpers'
 
 describe('Findings API', () => {
@@ -27,7 +27,7 @@ describe('Findings API', () => {
     it('should get all findings', async () => {
       const response = await app.request('/api/findings', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -40,7 +40,7 @@ describe('Findings API', () => {
     it('should filter findings by severity', async () => {
       const response = await app.request('/api/findings?severity=high', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -53,7 +53,7 @@ describe('Findings API', () => {
     it('should filter findings by status', async () => {
       const response = await app.request('/api/findings?status=new', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -66,7 +66,7 @@ describe('Findings API', () => {
     it('should search findings by title', async () => {
       const response = await app.request(`/api/findings?search=${encodeURIComponent(testFinding.title)}`, {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -81,7 +81,7 @@ describe('Findings API', () => {
     it('should get finding by id', async () => {
       const response = await app.request(`/api/findings/${testFinding.id}`, {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -95,7 +95,7 @@ describe('Findings API', () => {
     it('should return 404 for non-existent finding', async () => {
       const response = await app.request('/api/findings/99999', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -115,7 +115,7 @@ describe('Findings API', () => {
 
       const response = await app.request(`/api/findings/${testFinding.id}/triage`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -136,7 +136,7 @@ describe('Findings API', () => {
 
       const response = await app.request(`/api/findings/${testFinding.id}/triage`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -164,7 +164,7 @@ describe('Findings API', () => {
 
       const response = await app.request('/api/findings/bulk-triage', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
@@ -185,7 +185,7 @@ describe('Findings API', () => {
     it('should get findings statistics', async () => {
       const response = await app.request('/api/findings/stats', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })

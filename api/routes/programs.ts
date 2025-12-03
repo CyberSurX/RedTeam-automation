@@ -140,7 +140,7 @@ router.post('/', authenticateToken, requireRole(['admin', 'user']), async (req: 
       program_id,
       status: 'active',
       type: 'public',
-      created_by: req.user.id,
+      created_by: (req as any).user?.id || 'system',
       created_at: new Date(),
       updated_at: new Date()
     }

@@ -14,6 +14,7 @@ export interface ScanConfig {
   tools: string[];
   timeout: number;
   threads: number;
+  userId: string;
 }
 
 export interface ScanResult {
@@ -61,7 +62,7 @@ class ScanningService {
 
   async startScan(programId: string, config: ScanConfig): Promise<string> {
     const jobId = uuidv4();
-    
+
     try {
       // Create job in database
       await query(
@@ -106,7 +107,7 @@ class ScanningService {
       // Vulnerability scanning with nuclei
       if (config.tools.includes('nuclei') && (config.scanType === 'vulnerability' || config.scanType === 'full')) {
         const vulnResults = await this.runNuclei(config.target, config.intensity);
-        results.vulnerabilities = vulnResults;
+        results.vulnerabilities = vulnResults as any;
       }
 
       // Web application scanning with OWASP ZAP
@@ -134,7 +135,7 @@ class ScanningService {
     }
   }
 
-  private async runNmap(target: string, ports: string, intensity: string): Promise<Array<{port: number, protocol: string, service: string, version: string}>> {
+  private async runNmap(target: string, ports: string, intensity: string): Promise<Array<{ port: number, protocol: string, service: string, version: string }>> {
     try {
       const intensityFlags = {
         light: '-sS',
@@ -142,9 +143,9 @@ class ScanningService {
         aggressive: '-sS -sV -sC --script vuln'
       };
 
-      const command = `${this.tools.nmap} ${intensityFlags[intensity]} -p ${ports} ${target} -oX -`;
+      const command = `${this.tools.nmap} ${(intensityFlags as any)[intensity]} -p ${ports} ${target} -oX -`;
       const { stdout } = await execAsync(command, { timeout: 600000 }); // 10 minutes
-      
+
       // Parse XML output
       const results = this.parseNmapXML(stdout);
       return results;
@@ -154,9 +155,9 @@ class ScanningService {
     }
   }
 
-  private parseNmapXML(xmlOutput: string): Array<{port: number, protocol: string, service: string, version: string}> {
-    const results: Array<{port: number, protocol: string, service: string, version: string}> = [];
-    
+  private parseNmapXML(xmlOutput: string): Array<{ port: number, protocol: string, service: string, version: string }> {
+    const results: Array<{ port: number, protocol: string, service: string, version: string }> = [];
+
     try {
       // Simple XML parsing for port information
       const portMatches = xmlOutput.match(/<port[^>]*>/g);
@@ -164,16 +165,16 @@ class ScanningService {
         for (const match of portMatches) {
           const portMatch = match.match(/portid="(\d+)"/);
           const protocolMatch = match.match(/protocol="(\w+)"/);
-          
+
           if (portMatch && protocolMatch) {
             const port = parseInt(portMatch[1]);
             const protocol = protocolMatch[1];
-            
+
             // Extract service information
             const serviceMatch = xmlOutput.match(new RegExp(`<service[^>]*name="([^"]*)"[^>]*version="([^"]*)"`));
             const service = serviceMatch ? serviceMatch[1] : 'unknown';
             const version = serviceMatch ? serviceMatch[2] : 'unknown';
-            
+
             results.push({ port, protocol, service, version });
           }
         }
@@ -181,11 +182,11 @@ class ScanningService {
     } catch (error) {
       logger.error(`Error parsing Nmap XML: ${error}`);
     }
-    
+
     return results;
   }
 
-  private async runNuclei(target: string, intensity: string): Promise<Array<{id: string, name: string, severity: string, description: string, affectedAsset: string, cve?: string, cvssScore?: number}>> {
+  private async runNuclei(target: string, intensity: string): Promise<Array<{ id: string, name: string, severity: string, description: string, affectedAsset: string, cve?: string, cvssScore?: number }>> {
     try {
       const intensityFlags = {
         light: '-severity info,low',
@@ -193,11 +194,11 @@ class ScanningService {
         aggressive: '-severity medium,high,critical'
       };
 
-      const command = `${this.tools.nuclei} -u ${target} ${intensityFlags[intensity]} -json -silent`;
+      const command = `${this.tools.nuclei} -u ${target} ${(intensityFlags as any)[intensity]} -json -silent`;
       const { stdout } = await execAsync(command, { timeout: 900000 }); // 15 minutes
-      
-      const results: Array<{id: string, name: string, severity: string, description: string, affectedAsset: string, cve?: string, cvssScore?: number}> = [];
-      
+
+      const results: Array<{ id: string, name: string, severity: string, description: string, affectedAsset: string, cve?: string, cvssScore?: number }> = [];
+
       // Parse JSON output
       const lines = stdout.split('\n').filter(line => line.trim());
       for (const line of lines) {
@@ -216,7 +217,7 @@ class ScanningService {
           logger.error(`Error parsing nuclei output: ${error}`);
         }
       }
-      
+
       return results;
     } catch (error) {
       logger.error(`Nuclei error: ${error}`);
@@ -224,18 +225,18 @@ class ScanningService {
     }
   }
 
-  private async runZap(target: string): Promise<Array<{url: string, risk: string, confidence: string, description: string, solution: string}>> {
+  private async runZap(target: string): Promise<Array<{ url: string, risk: string, confidence: string, description: string, solution: string }>> {
     try {
       // Start ZAP scan
       const startCommand = `${this.tools.zap} quick-scan --self-contained ${target}`;
       await execAsync(startCommand, { timeout: 1800000 }); // 30 minutes
-      
+
       // Get scan results
       const resultsCommand = `${this.tools.zap} alerts`;
       const { stdout } = await execAsync(resultsCommand, { timeout: 60000 });
-      
-      const results: Array<{url: string, risk: string, confidence: string, description: string, solution: string}> = [];
-      
+
+      const results: Array<{ url: string, risk: string, confidence: string, description: string, solution: string }> = [];
+
       // Parse alerts output (simplified parsing)
       const lines = stdout.split('\n');
       for (const line of lines) {
@@ -252,7 +253,7 @@ class ScanningService {
           }
         }
       }
-      
+
       return results;
     } catch (error) {
       logger.error(`ZAP error: ${error}`);
@@ -260,20 +261,20 @@ class ScanningService {
     }
   }
 
-  private async runTestSSL(target: string): Promise<Array<{host: string, port: number, protocol: string, cipher: string, certificate: string, vulnerabilities: string[]}>> {
+  private async runTestSSL(target: string): Promise<Array<{ host: string, port: number, protocol: string, cipher: string, certificate: string, vulnerabilities: string[] }>> {
     try {
       const command = `${this.tools.testssl} --jsonfile /tmp/ssl_results.json ${target}:443`;
       await execAsync(command, { timeout: 600000 }); // 10 minutes
-      
+
       // Read results from JSON file
       const fs = require('fs');
       const sslResults = JSON.parse(fs.readFileSync('/tmp/ssl_results.json', 'utf8'));
-      
+
       // Clean up temp file
       fs.unlinkSync('/tmp/ssl_results.json');
-      
-      const results: Array<{host: string, port: number, protocol: string, cipher: string, certificate: string, vulnerabilities: string[]}> = [];
-      
+
+      const results: Array<{ host: string, port: number, protocol: string, cipher: string, certificate: string, vulnerabilities: string[] }> = [];
+
       if (sslResults && sslResults.length > 0) {
         for (const finding of sslResults) {
           results.push({
@@ -286,7 +287,7 @@ class ScanningService {
           });
         }
       }
-      
+
       return results;
     } catch (error) {
       logger.error(`TestSSL error: ${error}`);
@@ -302,8 +303,8 @@ class ScanningService {
       'low': 'low' as const,
       'info': 'info' as const
     };
-    
-    return severityMap[severity.toLowerCase()] || 'info';
+
+    return (severityMap as any)[severity.toLowerCase()] || 'info';
   }
 
   private async saveScanResults(jobId: string, results: ScanResult): Promise<void> {
@@ -342,8 +343,8 @@ class ScanningService {
       'low': 'low' as const,
       'informational': 'info' as const
     };
-    
-    return riskMap[risk.toLowerCase()] || 'info';
+
+    return (riskMap as any)[risk.toLowerCase()] || 'info';
   }
 
   private async updateJobStatus(jobId: string, status: string): Promise<void> {
@@ -368,7 +369,7 @@ class ScanningService {
         return null;
       }
 
-      return result.rows[0].results;
+      return (result.rows[0] as any).results;
     } catch (error) {
       logger.error(`Failed to get scan results: ${error}`);
       return null;

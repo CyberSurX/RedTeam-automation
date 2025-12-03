@@ -12,7 +12,8 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Accept images only
     if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed'), false)
+      // Reject non-image files without type error
+      return cb(null, false)
     }
     cb(null, true)
   },

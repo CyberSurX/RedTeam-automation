@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { app } from '../src/app'
-import { pool } from '../src/database'
+import { query as pool } from '../src/config/database'
 import { createTestUser, getAuthToken } from './helpers'
 
 describe('Authentication API', () => {
@@ -110,7 +110,7 @@ describe('Authentication API', () => {
     it('should get user profile with valid token', async () => {
       const response = await app.request('/api/auth/profile', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })
@@ -132,7 +132,7 @@ describe('Authentication API', () => {
     it('should reject request with invalid token', async () => {
       const response = await app.request('/api/auth/profile', {
         method: 'GET',
-        headers: { 
+        headers: {
           'Authorization': 'Bearer invalid-token'
         }
       })
@@ -145,7 +145,7 @@ describe('Authentication API', () => {
     it('should logout successfully', async () => {
       const response = await app.request('/api/auth/logout', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${authToken}`
         }
       })

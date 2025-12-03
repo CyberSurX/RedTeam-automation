@@ -40,7 +40,12 @@ export class CacheManager {
   }
 
   set(key: string, data: any, ttl?: number): boolean {
-    return this.cache.set(key, data, ttl)
+    // Some NodeCache typings expect a strict string|number ttl.
+    // Use the overload without ttl when it's undefined to satisfy TS.
+    if (typeof ttl === 'number') {
+      return this.cache.set(key, data, ttl)
+    }
+    return this.cache.set(key, data)
   }
 
   del(key: string): number {

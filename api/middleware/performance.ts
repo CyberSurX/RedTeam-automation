@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import compression from 'compression'
 import helmet from 'helmet'
-import rateLimit from 'express-rate-limit'
-import slowDown from 'express-slow-down'
+import * as rateLimit from 'express-rate-limit'
+import * as slowDown from 'express-slow-down'
 import { cacheMiddleware } from './cache'
 
 // Compression middleware

@@ -3,7 +3,7 @@
  * Handles user registration, login, logout, and profile management
  */
 import { Router, type Request, type Response } from 'express'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { body, validationResult } from 'express-validator'
 import rateLimit from 'express-rate-limit'
@@ -56,15 +56,10 @@ const validateLogin = [
  * Generate JWT token
  */
 const generateToken = (user: User): string => {
-  return jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role 
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  )
+  const payload = { id: user.id, email: user.email, role: user.role }
+  // Explicitly cast options to satisfy @types/jsonwebtoken
+  const options: jwt.SignOptions = { expiresIn: JWT_EXPIRES_IN as any }
+  return jwt.sign(payload, JWT_SECRET, options)
 }
 
 /**

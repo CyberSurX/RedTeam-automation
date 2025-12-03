@@ -1,25 +1,31 @@
-import Redis from 'ioredis';
+import { createClient, type RedisClientType } from 'redis';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-// Redis client for caching
-export const redisClient = new Redis(redisUrl, {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
+// Redis client for caching (node-redis v4)
+export const redisClient: RedisClientType = createClient({
+  url: redisUrl,
+  socket: {
+    connectTimeout: 5000,
+    reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+  },
 });
 
 // Redis client for Bull queue (separate connection)
-export const queueRedis = new Redis(redisUrl, {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
+export const queueRedis: RedisClientType = createClient({
+  url: redisUrl,
+  socket: {
+    connectTimeout: 5000,
+    reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+  },
 });
 
 // Test Redis connection
 export async function testRedisConnection(): Promise<boolean> {
   try {
-    await redisClient.connect();
+    if (!redisClient.isOpen) {
+      await redisClient.connect();
+    }
     await redisClient.ping();
     console.log('✅ Redis connection established');
     return true;
@@ -55,7 +61,7 @@ export async function setCache(
   ttlSeconds: number = 3600
 ): Promise<void> {
   try {
-    await redisClient.setex(key, ttlSeconds, value);
+    await redisClient.setEx(key, ttlSeconds, value);
   } catch (error) {
     console.error('Cache set error:', error);
   }

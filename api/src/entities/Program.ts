@@ -13,13 +13,13 @@ export type ProgramType = 'public' | 'private' | 'invite_only'
 @Index(['platform', 'program_id'])
 export class Program {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column()
   name: string
 
   @Column({ type: 'text', nullable: true })
-  description: string
+  description: string | null
 
   @Column()
   platform: string // 'hackerone', 'bugcrowd', etc.
@@ -37,23 +37,23 @@ export class Program {
   scopes: {
     in_scope: string[]
     out_of_scope: string[]
-  }
+  } | null
 
   @Column({ type: 'jsonb', nullable: true })
   rewards: {
     min: number
     max: number
     currency: string
-  }
+  } | null
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>
+  metadata: Record<string, unknown> | null
 
   @Column({ type: 'timestamp', nullable: true })
-  start_date: Date
+  start_date: Date | null
 
   @Column({ type: 'timestamp', nullable: true })
-  end_date: Date
+  end_date: Date | null
 
   @CreateDateColumn()
   created_at: Date

@@ -11,7 +11,7 @@ export interface ReportConfig {
   includeProofOfConcept: boolean;
   includeTechnicalDetails: boolean;
   severityFilter: string[];
-  customFields: Record<string, any>;
+  customFields: Record<string, string | number | boolean | null>;
 }
 
 export interface ReportResult {
@@ -189,23 +189,39 @@ Implement proper authorization checks for all resource access. Use indirect obje
         [findings, config.severityFilter]
       );
 
-      const findingsData = findingsResult.rows;
+      const findingsData = findingsResult.rows as Array<{
+        id: string;
+        program_id: string;
+        vulnerability_type: string;
+        severity: string;
+        title: string;
+        description: string;
+        proof_of_concept?: string;
+        technical_details?: string;
+        affected_asset: string;
+        cvss_score?: number;
+        cwe_id?: string;
+        program_name: string;
+        program_platform: string;
+        [key: string]: unknown;
+      }>;
       result.statistics.total = findingsData.length;
 
       // Process each finding
       for (const finding of findingsData) {
         try {
           const report = await this.generateSingleReport(finding, config);
-          
+
           if (config.autoSubmit && config.platform !== 'custom') {
             const submittedReport = await this.submitToPlatform(report, config);
             result.reports.push(submittedReport);
             result.statistics.submitted++;
-            
-            if (submittedReport.status === 'resolved') {
+
+            if ((submittedReport as { status: string }).status === 'resolved') {
               result.statistics.resolved++;
-              if (submittedReport.bountyAmount) {
-                result.statistics.totalBounty += submittedReport.bountyAmount;
+              const bountyAmount = (submittedReport as { bountyAmount?: number }).bountyAmount;
+              if (bountyAmount) {
+                result.statistics.totalBounty += bountyAmount;
               }
             }
           } else {
@@ -217,7 +233,7 @@ Implement proper authorization checks for all resource access. Use indirect obje
         } catch (error) {
           result.errors.push({
             findingId: finding.id,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
           logger.error(`Failed to generate report for finding ${finding.id}:`, error);
         }
@@ -240,11 +256,11 @@ Implement proper authorization checks for all resource access. Use indirect obje
 
   private async generateSingleReport(finding: any, config: ReportConfig): Promise<any> {
     const template = this.getReportTemplate(finding.vulnerability_type);
-    
+
     // Fill template with finding data
     const title = this.fillTemplate(template.title, finding);
     const description = this.fillTemplate(template.description, finding);
-    
+
     const report = {
       id: finding.id,
       platform: config.platform,
@@ -265,8 +281,9 @@ Implement proper authorization checks for all resource access. Use indirect obje
     return report;
   }
 
-  private getReportTemplate(vulnerabilityType: string): any {
-    return this.reportTemplates[vulnerabilityType] || this.reportTemplates.default;
+  private getReportTemplate(vulnerabilityType: string): { title: string; description: string; severity: string } {
+    const templates = this.reportTemplates as Record<string, { title: string; description: string; severity: string }>;
+    return templates[vulnerabilityType] || templates.default;
   }
 
   private fillTemplate(template: string, finding: any): string {
@@ -479,9 +496,9 @@ Implement proper authorization checks for all resource access. Use indirect obje
 
       return {
         ...report,
-        id: result.rows[0].id,
+        id: (result.rows[0] as any).id,
         status: 'draft' as const,
-        createdAt: result.rows[0].created_at
+        createdAt: (result.rows[0] as any).created_at
       };
     } catch (error) {
       logger.error('Failed to save draft report:', error);
@@ -569,8 +586,8 @@ Implement proper authorization checks for all resource access. Use indirect obje
       return {
         summary: result.rows,
         platformStats: platformStats.rows,
-        totalReports: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0),
-        totalBounty: result.rows.reduce((sum, row) => sum + (parseFloat(row.total_bounty) || 0), 0),
+        totalReports: result.rows.reduce((sum: number, row: any) => sum + parseInt(row.count), 0),
+        totalBounty: result.rows.reduce((sum: number, row: any) => sum + (parseFloat(row.total_bounty) || 0), 0),
         resolutionRate: this.calculateResolutionRate(result.rows)
       };
     } catch (error) {

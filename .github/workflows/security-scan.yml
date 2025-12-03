@@ -1,0 +1,239 @@
+name: Security Scanning
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run daily at 2 AM UTC
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile*'
+      - 'docker-compose.yml'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Dependency Vulnerability Scan
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate --json > security-reports/npm-audit.json || true
+          npm audit --audit-level=moderate
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=medium --json > security-reports/snyk-report.json || true
+
+      - name: Upload dependency scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-scan-results
+          path: security-reports/
+
+  # Container Security Scan
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: |
+          docker build -f Dockerfile.backend -t redteam-backend:latest .
+          docker build -f Dockerfile.frontend -t redteam-frontend:latest .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'redteam-backend:latest'
+          format: 'json'
+          output: 'security-reports/trivy-backend.json'
+          severity: 'MEDIUM,HIGH,CRITICAL'
+
+      - name: Run Trivy vulnerability scanner on frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'redteam-frontend:latest'
+          format: 'json'
+          output: 'security-reports/trivy-frontend.json'
+          severity: 'MEDIUM,HIGH,CRITICAL'
+
+      - name: Upload container scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-scan-results
+          path: security-reports/
+
+  # Secret Scanning
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Run GitLeaks
+        uses: zricethezav/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Code Security Analysis
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint security rules
+        run: |
+          npm run lint -- --ext .js,.jsx,.ts,.tsx --config .eslintrc.security.js || true
+
+      - name: Run custom security tests
+        run: |
+          chmod +x scripts/security-scan.sh
+          ./scripts/security-scan.sh
+
+      - name: Run API security tests
+        run: |
+          chmod +x scripts/api-security-test.sh
+          ./scripts/api-security-test.sh
+
+      - name: Upload security test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-test-results
+          path: security-reports/
+
+  # Security Report Generation
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, container-scan, secret-scan, code-security]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all scan results
+        uses: actions/download-artifact@v3
+
+      - name: Generate consolidated security report
+        run: |
+          mkdir -p security-reports
+          
+          # Combine all security reports
+          cat > security-reports/security-summary.md << 'EOF'
+          # Security Scan Summary
+          
+          **Scan Date:** $(date)
+          **Repository:** ${{ github.repository }}
+          **Commit:** ${{ github.sha }}
+          
+          ## Scan Results
+          
+          ### Dependency Vulnerabilities
+          - npm audit results: See npm-audit.json
+          - Snyk scan results: See snyk-report.json
+          
+          ### Container Security
+          - Backend image scan: See trivy-backend.json
+          - Frontend image scan: See trivy-frontend.json
+          
+          ### Code Security
+          - Custom security tests: See security-test-results/
+          - Secret scanning: Performed by TruffleHog and GitLeaks
+          
+          ## Action Items
+          
+          Please review all HIGH and CRITICAL severity findings.
+          
+          EOF
+
+      - name: Upload consolidated report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-reports/
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const summary = fs.readFileSync('security-reports/security-summary.md', 'utf8');
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🔒 Security Scan Results\n\n${summary}`
+              });
+            } catch (error) {
+              console.log('Could not create security comment:', error);
+            }
+
+  # Notification
+  notify:
+    name: Send Security Notifications
+    runs-on: ubuntu-latest
+    needs: [security-report]
+    if: always()
+    
+    steps:
+      - name: Notify security team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#security'
+          webhook_url: ${{ secrets.SLACK_SECURITY_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_SECURITY_WEBHOOK }}

@@ -6,42 +6,42 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Program } from './Program'
 import { Finding } from './Finding'
 import { Report } from './Report'
-import bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt'
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id!: string
 
   @Column({ unique: true })
-  email: string
+  email!: string
 
   @Column()
-  password_hash: string
+  password_hash!: string
 
   @Column()
-  name: string
+  name!: string
 
   @Column({ type: 'enum', enum: ['admin', 'user', 'viewer'], default: 'user' })
-  role: 'admin' | 'user' | 'viewer'
+  role!: 'admin' | 'user' | 'viewer'
 
   @Column({ type: 'jsonb', default: {} })
-  preferences: Record<string, any>
+  preferences!: Record<string, unknown>
 
   @CreateDateColumn()
-  created_at: Date
+  created_at!: Date
 
   @UpdateDateColumn()
-  updated_at: Date
+  updated_at!: Date
 
   @OneToMany(() => Program, program => program.created_by)
-  programs: Program[]
+  programs!: Program[]
 
   @OneToMany(() => Finding, finding => finding.researcher)
-  findings: Finding[]
+  findings!: Finding[]
 
   @OneToMany(() => Report, report => report.created_by)
-  reports: Report[]
+  reports!: Report[]
 
   // Hash password before saving
   @BeforeInsert()
@@ -58,7 +58,7 @@ export class User {
   }
 
   // Get public profile (exclude sensitive data)
-  getPublicProfile(): Omit<User, 'password_hash'> {
+  getPublicProfile() {
     const { password_hash, ...publicProfile } = this
     return publicProfile
   }

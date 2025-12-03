@@ -1,0 +1,103 @@
+{{/*
+Create the configmap for shared configuration
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+data:
+  # Application configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: {{ .Values.global.logLevel | default "info" | quote }}
+  
+  # Database configuration
+  POSTGRES_DB: {{ include "bugbounty-platform.database.name" . | quote }}
+  POSTGRES_HOST: {{ include "bugbounty-platform.database.host" . | quote }}
+  POSTGRES_PORT: {{ include "bugbounty-platform.database.port" . | quote }}
+  
+  # Redis configuration
+  REDIS_HOST: {{ include "bugbounty-platform.redis.host" . | quote }}
+  REDIS_PORT: {{ include "bugbounty-platform.redis.port" . | quote }}
+  
+  # Service URLs
+  API_GATEWAY_URL: "http://{{ include "bugbounty-platform.apiGateway.serviceName" . }}:{{ .Values.apiGateway.service.port }}"
+  RECON_SERVICE_URL: "http://{{ include "bugbounty-platform.reconService.serviceName" . }}:{{ .Values.reconService.service.port }}"
+  SCANNING_SERVICE_URL: "http://{{ include "bugbounty-platform.scanningService.serviceName" . }}:{{ .Values.scanningService.service.port }}"
+  EXPLOITATION_SERVICE_URL: "http://{{ include "bugbounty-platform.exploitationService.serviceName" . }}:{{ .Values.exploitationService.service.port }}"
+  TRIAGE_SERVICE_URL: "http://{{ include "bugbounty-platform.triageService.serviceName" . }}:{{ .Values.triageService.service.port }}"
+  REPORTING_SERVICE_URL: "http://{{ include "bugbounty-platform.reportingService.serviceName" . }}:{{ .Values.reportingService.service.port }}"
+  
+  # Platform configuration
+  PLATFORM_NAME: {{ .Values.global.platformName | default "Bug Bounty Automation Platform" | quote }}
+  PLATFORM_VERSION: {{ .Values.global.platformVersion | default "1.0.0" | quote }}
+  
+  # Security configuration
+  JWT_EXPIRATION: {{ .Values.global.jwtExpiration | default "24h" | quote }}
+  API_RATE_LIMIT: {{ .Values.global.apiRateLimit | default "1000" | quote }}
+  
+  # Monitoring configuration
+  METRICS_ENABLED: {{ .Values.global.metricsEnabled | default "true" | quote }}
+  HEALTH_CHECK_INTERVAL: {{ .Values.global.healthCheckInterval | default "30" | quote }}
+  
+  # Feature flags
+  FEATURE_RECON_ENABLED: {{ .Values.global.features.recon | default "true" | quote }}
+  FEATURE_SCANNING_ENABLED: {{ .Values.global.features.scanning | default "true" | quote }}
+  FEATURE_EXPLOITATION_ENABLED: {{ .Values.global.features.exploitation | default "true" | quote }}
+  FEATURE_TRIAGE_ENABLED: {{ .Values.global.features.triage | default "true" | quote }}
+  FEATURE_REPORTING_ENABLED: {{ .Values.global.features.reporting | default "true" | quote }}
+---
+{{/*
+Create the service account
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "bugbounty-platform.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+---
+{{/*
+Create the role for the service account
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "bugbounty-platform.fullname" . }}-rolebinding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bugbounty-platform.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "bugbounty-platform.fullname" . }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "bugbounty-platform.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
