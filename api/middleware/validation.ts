@@ -1,36 +1,84 @@
+typescript
 import { Request, Response, NextFunction } from 'express'
-import { validationResult } from 'express-validator'
+import { validationResult, ValidationError as ExpressValidationError } from 'express-validator'
 import { ValidationError } from '../utils/errors'
 
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
-  const errors = validationResult(req)
-  
-  if (!errors.isEmpty()) {
-    const errorMessages = errors.array().map(error => ({
-      field: error.type === 'field' ? error.path : error.type,
-      message: error.msg,
-      value: error.type === 'field' ? error.value : undefined,
-    }))
+  try {
+    const errors = validationResult(req)
     
-    throw new ValidationError('Validation failed', errorMessages)
+    if (!errors.isEmpty()) {
+      const errorMessages = errors.array().map(error => ({
+        field: error.type === 'field' ? error.path : error.type,
+        message: error.msg || 'Invalid value',
+        value: error.type === 'field' ? error.value : undefined,
+        location: error.location,
+      }))
+      
+      throw new ValidationError('Validation failed', errorMessages)
+    }
+    
+    next()
+  } catch (error) {
+    next(error)
   }
-  
-  next()
 }
 
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
-  // Basic input sanitization
-  if (req.body) {
-    Object.keys(req.body).forEach(key => {
-      if (typeof req.body[key] === 'string') {
-        // Remove potential XSS patterns
-        req.body[key] = req.body[key]
+  try {
+    const sanitizeValue = (value: any): any => {
+      if (typeof value === 'string') {
+        return value
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
           .replace(/javascript:/gi, '')
           .replace(/on\w+\s*=/gi, '')
+          .replace(/data:/gi, '')
+          .replace(/vbscript:/gi, '')
+          .trim()
       }
-    })
+      
+      if (Array.isArray(value)) {
+        return value.map(sanitizeValue)
+      }
+      
+      if (value && typeof value === 'object') {
+        const sanitizedObj: Record<string, any> = {}
+        for (const key in value) {
+          if (Object.prototype.hasOwnProperty.call(value, key)) {
+            sanitizedObj[key] = sanitizeValue(value[key])
+          }
+        }
+        return sanitizedObj
+      }
+      
+      return value
+    }
+    
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeValue(req.body)
+    }
+    
+    if (req.query && typeof req.query === 'object') {
+      req.query = sanitizeValue(req.query)
+    }
+    
+    if (req.params && typeof req.params === 'object') {
+      req.params = sanitizeValue(req.params)
+    }
+    
+    next()
+  } catch (error) {
+    next(error)
   }
-  
-  next()
+}
+
+export const validateRequest = (validations: any[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await Promise.all(validations.map(validation => validation.run(req)))
+      handleValidationErrors(req, res, next)
+    } catch (error) {
+      next(error)
+    }
+  }
 }

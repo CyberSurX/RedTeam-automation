@@ -1,24 +1,11 @@
-/**
- * Program management API endpoints
- * CRUD operations for bug bounty programs with authentication and validation
- */
 import { Router, type Request, type Response } from 'express'
-import { body, param, validationResult } from 'express-validator'
-import rateLimit from 'express-rate-limit'
+import { getRepository } from 'typeorm'
+import { Program } from '../src/entities/Program'
+import { asyncHandler } from '../middleware/errorHandler'
+import { authorize } from '../middleware/authorize'
 import jwt from 'jsonwebtoken'
 
 const router = Router()
-
-// Rate limiting for program endpoints
-const programLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests, please try again later',
-  standardHeaders: true,
-  legacyHeaders: false,
-})
-
-// JWT configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production'
 
 // Authentication middleware
@@ -41,120 +28,80 @@ const authenticateToken = (req: Request, res: Response, next: Function): void =>
   })
 }
 
-// Role-based authorization middleware
-const requireRole = (roles: string[]) => {
-  return (req: Request, res: Response, next: Function): void => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Insufficient permissions' })
-      return
-    }
-    next()
+// GET all programs
+router.get('/', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  const programRepository = getRepository(Program)
+  const programs = await programRepository.find({
+    order: { created_at: 'DESC' }
+  })
+  
+  res.json({
+    success: true,
+    data: programs
+  })
+}))
+
+// POST create new program - Admin only
+router.post('/', authenticateToken, authorize(['admin']), asyncHandler(async (req: Request, res: Response) => {
+  const programRepository = getRepository(Program)
+  const { name, platform, url, scope, isAutomated, autoRecon, autoScan, autoReport } = req.body
+  
+  const program = new Program()
+  program.name = name
+  program.platform = platform
+  program.program_id = url // Using URL as a temporary external ID for custom/new programs
+  program.status = 'active'
+  program.scopes = {
+    in_scope: scope || [],
+    out_of_scope: []
   }
-}
-
-// Mock database (replace with actual TypeORM integration)
-interface Program {
-  id: string
-  name: string
-  description: string
-  platform: string
-  program_id: string
-  status: 'active' | 'paused' | 'completed' | 'draft'
-  type: 'public' | 'private' | 'invite_only'
-  created_by: string
-  created_at: Date
-  updated_at: Date
-}
-
-const programs: Program[] = []
-
-/**
- * Get all programs with pagination and filtering
- * GET /api/programs
- */
-router.get('/', programLimiter, authenticateToken, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const page = parseInt(req.query.page as string) || 1
-    const limit = parseInt(req.query.limit as string) || 10
-    const status = req.query.status as string
-    const platform = req.query.platform as string
-    const search = req.query.search as string
-
-    let filteredPrograms = programs
-
-    // Apply filters
-    if (status) {
-      filteredPrograms = filteredPrograms.filter(p => p.status === status)
-    }
-    if (platform) {
-      filteredPrograms = filteredPrograms.filter(p => p.platform === platform)
-    }
-    if (search) {
-      filteredPrograms = filteredPrograms.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    // Pagination
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex)
-
-    res.json({
-      programs: paginatedPrograms,
-      pagination: {
-        page,
-        limit,
-        total: filteredPrograms.length,
-        pages: Math.ceil(filteredPrograms.length / limit)
-      }
-    })
-  } catch (error) {
-    console.error('Get programs error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+  program.metadata = {
+    url,
+    isAutomated,
+    autoRecon,
+    autoScan,
+    autoReport
   }
-})
+  
+  const savedProgram = await programRepository.save(program)
+  
+  res.status(201).json({
+    success: true,
+    data: savedProgram
+  })
+}))
 
-/**
- * Create new program
- * POST /api/programs
- */
-router.post('/', authenticateToken, requireRole(['admin', 'user']), async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, description, platform, program_id } = req.body
-
-    // Check if program already exists
-    const existingProgram = programs.find(p => p.program_id === program_id && p.platform === platform)
-    if (existingProgram) {
-      res.status(409).json({ error: 'Program already exists' })
-      return
-    }
-
-    // Create new program
-    const newProgram: Program = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      description: description || '',
-      platform,
-      program_id,
-      status: 'active',
-      type: 'public',
-      created_by: (req as any).user?.id || 'system',
-      created_at: new Date(),
-      updated_at: new Date()
-    }
-
-    programs.push(newProgram)
-
-    res.status(201).json({
-      message: 'Program created successfully',
-      program: newProgram
-    })
-  } catch (error) {
-    console.error('Create program error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+// PATCH update status - Admin and User
+router.patch('/:id/status', authenticateToken, authorize(['admin', 'user']), asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { status } = req.body
+  
+  const programRepository = getRepository(Program)
+  const program = await programRepository.findOne({ where: { id } })
+  
+  if (!program) {
+    res.status(404).json({ success: false, message: 'Program not found' })
+    return
   }
-})
+  
+  program.status = status
+  await programRepository.save(program)
+  
+  res.json({ success: true, data: program })
+}))
+
+// DELETE program - Admin only
+router.delete('/:id', authenticateToken, authorize(['admin']), asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params
+  const programRepository = getRepository(Program)
+  const result = await programRepository.delete(id)
+  
+  if (result.affected === 0) {
+    res.status(404).json({ success: false, message: 'Program not found' })
+    return
+  }
+  
+  res.json({ success: true, message: 'Program deleted' })
+}))
 
 export default router

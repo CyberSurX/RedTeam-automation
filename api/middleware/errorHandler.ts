@@ -1,5 +1,6 @@
+typescript
 import { Request, Response, NextFunction } from 'express'
-import logger, { apiLogger, securityLogger } from '../utils/logger'
+import { apiLogger } from '../utils/logger'
 import { AppError } from '../utils/errors'
 
 export const errorHandler = (
@@ -8,57 +9,52 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  const anyErr = err as any
-  let error: any = { ...anyErr }
-  error.message = anyErr.message
+  let error: AppError
 
-  // Log error
+  if (err instanceof AppError) {
+    error = err
+  } else {
+    error = new AppError(err.message || 'Internal Server Error', 500)
+  }
+
   apiLogger.error('Error occurred:', {
-    error: err.message,
+    error: error.message,
     stack: err.stack,
     url: req.url,
     method: req.method,
     ip: req.ip,
     userAgent: req.get('user-agent'),
+    timestamp: new Date().toISOString(),
   })
 
-  // Mongoose bad ObjectId
-  if (anyErr.name === 'CastError') {
-    const message = 'Resource not found'
-    error = new AppError(message, 404)
+  if (err.name === 'CastError') {
+    error = new AppError('Resource not found', 404)
   }
 
-  // Mongoose duplicate key
-  if (anyErr.name === 'MongoServerError' && anyErr.code === 11000) {
-    const message = 'Duplicate field value entered'
-    error = new AppError(message, 400)
+  if (err.name === 'MongoServerError' && (err as any).code === 11000) {
+    error = new AppError('Duplicate field value entered', 400)
   }
 
-  // Mongoose validation error
-  if (anyErr.name === 'ValidationError') {
-    const message = Object.values(anyErr.errors || {}).map((val: any) => val.message)
-    error = new AppError(message.join(', '), 400)
+  if (err.name === 'ValidationError') {
+    const messages = Object.values((err as any).errors || {}).map((val: any) => val.message)
+    error = new AppError(messages.join(', '), 400)
   }
 
-  // Prisma errors
-  if (anyErr.name === 'PrismaClientKnownRequestError') {
-    if (anyErr.code === 'P2002') {
-      const message = 'Unique constraint violation'
-      error = new AppError(message, 409)
-    } else if (anyErr.code === 'P2025') {
-      const message = 'Record not found'
-      error = new AppError(message, 404)
-    } else {
-      const message = 'Database operation failed'
-      error = new AppError(message, 500)
-    }
+  if (err.name === 'QueryFailedError') {
+    error = new AppError('Database operation failed', 500)
   }
 
-  res.status(error.statusCode || 500).json({
+  const response: any = {
     success: false,
-    message: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: anyErr.stack }),
-  })
+    message: error.message,
+    statusCode: error.statusCode,
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    response.stack = err.stack
+  }
+
+  res.status(error.statusCode).json(response)
 }
 
 export const notFound = (req: Request, res: Response, next: NextFunction) => {
@@ -66,9 +62,10 @@ export const notFound = (req: Request, res: Response, next: NextFunction) => {
   next(error)
 }
 
-export const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
-  Promise.resolve(fn(req, res, next)).catch(next)
-}
+export const asyncHandler = <T extends Function>(fn: T) => 
+  (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next)
+  }
 
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now()
@@ -83,6 +80,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       ip: req.ip,
       userAgent: req.get('user-agent'),
       userId: (req as any).user?.id,
+      timestamp: new Date().toISOString(),
     }
 
     if (res.statusCode >= 400) {
@@ -96,30 +94,13 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
 }
 
 export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Security headers
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('X-XSS-Protection', '1; mode=block')
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  res.setHeader('Content-Security-Policy', "default-src 'self'")
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-  res.setHeader('X-DNS-Prefetch-Control', 'off')
-  res.setHeader('X-Download-Options', 'noopen')
-  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none')
-  
-  next()
-}
-
-export const rateLimitLogger = (req: Request, res: Response, next: NextFunction) => {
-  res.on('finish', () => {
-    if (res.statusCode === 429) {
-      securityLogger.warn('Rate limit exceeded', {
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-        userId: (req as any).user?.id,
-        endpoint: req.url,
-      })
-    }
-  })
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   
   next()
 }

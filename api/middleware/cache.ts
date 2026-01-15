@@ -1,6 +1,21 @@
+typescript
 import { Request, Response, NextFunction } from 'express'
 import NodeCache from 'node-cache'
 import crypto from 'crypto'
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string
+  }
+}
+
+interface CacheStats {
+  hits: number
+  misses: number
+  keys: number
+  ksize: number
+  vsize: number
+}
 
 export class CacheManager {
   private static instance: CacheManager
@@ -9,9 +24,11 @@ export class CacheManager {
 
   private constructor() {
     this.cache = new NodeCache({
-      stdTTL: 300, // 5 minutes default
-      checkperiod: 60, // Check for expired keys every minute
+      stdTTL: 300,
+      checkperiod: 60,
       useClones: false,
+      deleteOnExpire: true,
+      maxKeys: 1000
     })
   }
 
@@ -22,33 +39,62 @@ export class CacheManager {
     return CacheManager.instance
   }
 
-  generateKey(req: Request): string {
-    const keyData = {
-      method: req.method,
-      url: req.url,
-      params: req.params,
-      query: req.query,
-      userId: (req as any).user?.id,
+  generateKey(req: AuthenticatedRequest): string {
+    try {
+      const keyData = {
+        method: req.method,
+        url: req.url,
+        params: req.params,
+        query: req.query,
+        userId: req.user?.id,
+      }
+      
+      const keyString = JSON.stringify(keyData, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          return Object.keys(value).sort().reduce((sorted, key) => {
+            sorted[key] = value[key]
+            return sorted
+          }, {} as any)
+        }
+        return value
+      })
+      
+      return this.keyPrefix + crypto.createHash('sha256').update(keyString).digest('hex')
+    } catch (error) {
+      throw new Error(`Failed to generate cache key: ${error}`)
     }
-    
-    const keyString = JSON.stringify(keyData)
-    return this.keyPrefix + crypto.createHash('md5').update(keyString).digest('hex')
   }
 
   get(key: string): any {
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string')
+    }
     return this.cache.get(key)
   }
 
   set(key: string, data: any, ttl?: number): boolean {
-    // Some NodeCache typings expect a strict string|number ttl.
-    // Use the overload without ttl when it's undefined to satisfy TS.
-    if (typeof ttl === 'number') {
-      return this.cache.set(key, data, ttl)
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string')
     }
-    return this.cache.set(key, data)
+    
+    if (ttl !== undefined && (typeof ttl !== 'number' || ttl < 0)) {
+      throw new Error('TTL must be a non-negative number')
+    }
+
+    try {
+      if (typeof ttl === 'number') {
+        return this.cache.set(key, data, ttl)
+      }
+      return this.cache.set(key, data)
+    } catch (error) {
+      throw new Error(`Failed to set cache: ${error}`)
+    }
   }
 
   del(key: string): number {
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string')
+    }
     return this.cache.del(key)
   }
 
@@ -56,107 +102,105 @@ export class CacheManager {
     this.cache.flushAll()
   }
 
-  getStats() {
+  getStats(): CacheStats {
     return this.cache.getStats()
+  }
+
+  keys(): string[] {
+    return this.cache.keys()
+  }
+
+  has(key: string): boolean {
+    return this.cache.has(key)
   }
 }
 
 export const cacheMiddleware = (ttl: number = 300) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Skip caching for non-GET requests
-    if (req.method !== 'GET') {
-      return next()
-    }
+  if (typeof ttl !== 'number' || ttl < 0) {
+    throw new Error('TTL must be a non-negative number')
+  }
 
-    // Skip caching for authenticated endpoints (unless specifically allowed)
-    if ((req as any).user && !req.query.cache) {
-      return next()
-    }
-
-    const cacheManager = CacheManager.getInstance()
-    const cacheKey = cacheManager.generateKey(req)
-
-    // Check cache
-    const cached = cacheManager.get(cacheKey)
-    if (cached) {
-      res.set('X-Cache', 'HIT')
-      return res.json({
-        success: true,
-        cached: true,
-        data: cached,
-      })
-    }
-
-    // Store original json method
-    const originalJson = res.json
-
-    // Override json method to cache response
-    res.json = function(data) {
-      // Cache successful responses only
-      if (res.statusCode === 200 && data.success) {
-        cacheManager.set(cacheKey, data.data, ttl)
-        res.set('X-Cache', 'MISS')
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      if (req.method !== 'GET') {
+        return next()
       }
 
-      // Call original json method
-      return originalJson.call(this, data)
-    }
+      if (req.user && !req.query.cache) {
+        return next()
+      }
 
-    next()
+      const cacheManager = CacheManager.getInstance()
+      const cacheKey = cacheManager.generateKey(req)
+
+      const cached = cacheManager.get(cacheKey)
+      if (cached !== undefined) {
+        res.set('X-Cache', 'HIT')
+        return res.json({
+          success: true,
+          cached: true,
+          data: cached,
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      const originalJson = res.json.bind(res)
+
+      res.json = function(data: any) {
+        try {
+          if (res.statusCode === 200 && data && data.success !== false) {
+            const dataToCache = data.data || data
+            cacheManager.set(cacheKey, dataToCache, ttl)
+            res.set('X-Cache', 'MISS')
+          }
+        } catch (error) {
+          console.error('Cache set error:', error)
+        }
+        return originalJson(data)
+      }
+
+      next()
+    } catch (error) {
+      console.error('Cache middleware error:', error)
+      next()
+    }
   }
 }
 
 export const invalidateCache = (pattern?: string) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const cacheManager = CacheManager.getInstance()
     
-    // Store original json method
-    const originalJson = res.json
+    const originalJson = res.json.bind(res)
 
-    res.json = function(data) {
-      // Invalidate cache on successful mutations
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        if (pattern) {
-          // Invalidate specific pattern
-          // This is a simplified implementation
-          cacheManager.flush() // For now, flush all cache
-        } else {
-          // Invalidate related cache entries
-          cacheManager.flush()
+    res.json = function(data: any) {
+      try {
+        if (res.statusCode >= 200 && res.statusCode < 300 && req.method !== 'GET') {
+          if (pattern) {
+            const keys = cacheManager.keys()
+            const matchedKeys = keys.filter(key => key.includes(pattern))
+            matchedKeys.forEach(key => cacheManager.del(key))
+          } else {
+            const cacheKey = cacheManager.generateKey(req)
+            cacheManager.del(cacheKey)
+          }
         }
+      } catch (error) {
+        console.error('Cache invalidation error:', error)
       }
-
-      // Call original json method
-      return originalJson.call(this, data)
+      return originalJson(data)
     }
 
     next()
   }
 }
 
-export const getCacheStats = (req: Request, res: Response) => {
-  const cacheManager = CacheManager.getInstance()
-  const stats = cacheManager.getStats()
-
-  res.json({
-    success: true,
-    data: {
-      hits: stats.hits,
-      misses: stats.misses,
-      keys: stats.keys,
-      ksize: stats.ksize,
-      vsize: stats.vsize,
-      hitRate: stats.hits / (stats.hits + stats.misses) || 0,
-    },
-  })
-}
-
-export const clearCache = (req: Request, res: Response) => {
+export const clearCache = () => {
   const cacheManager = CacheManager.getInstance()
   cacheManager.flush()
+}
 
-  res.json({
-    success: true,
-    message: 'Cache cleared successfully',
-  })
+export const getCacheStats = (): CacheStats => {
+  const cacheManager = CacheManager.getInstance()
+  return cacheManager.getStats()
 }

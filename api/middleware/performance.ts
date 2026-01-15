@@ -1,3 +1,4 @@
+typescript
 import { Request, Response, NextFunction } from 'express'
 import compression from 'compression'
 import helmet from 'helmet'
@@ -13,7 +14,7 @@ export const compressionMiddleware = compression({
     }
     return compression.filter(req, res)
   },
-  level: 6, // Balance between speed and compression ratio
+  level: 6,
 })
 
 // Security headers with performance optimizations
@@ -36,118 +37,170 @@ export const securityMiddleware = helmet({
 
 // Rate limiting
 export const rateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
 })
 
 // Strict rate limiting for auth endpoints
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
 })
 
 // Slow down middleware for additional protection
 export const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 50, // Allow 50 requests per 15 minutes, then...
-  delayMs: 500, // Begin adding 500ms of delay per request
+  windowMs: 15 * 60 * 1000,
+  delayAfter: 50,
+  delayMs: 500,
+  validate: { trustProxy: false },
 })
 
 // ETag support for better caching
 export const etagMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  res.set('ETag', 'weak')
-  next()
+  try {
+    res.set('ETag', 'weak')
+    next()
+  } catch (error) {
+    next(error)
+  }
 }
 
 // Conditional request handling
 export const conditionalRequest = (req: Request, res: Response, next: NextFunction) => {
-  // Add Last-Modified header
-  res.set('Last-Modified', new Date().toUTCString())
-  
-  // Check If-Modified-Since
-  if (req.headers['if-modified-since']) {
-    const modifiedSince = new Date(req.headers['if-modified-since'] as string)
-    const now = new Date()
+  try {
+    const lastModified = new Date().toUTCString()
+    res.set('Last-Modified', lastModified)
     
-    // If modified within last 5 minutes, return 304
-    if (now.getTime() - modifiedSince.getTime() < 5 * 60 * 1000) {
-      return res.status(304).end()
+    if (req.headers['if-modified-since']) {
+      const modifiedSinceHeader = req.headers['if-modified-since']
+      
+      if (typeof modifiedSinceHeader !== 'string') {
+        return next()
+      }
+      
+      const modifiedSince = new Date(modifiedSinceHeader)
+      const now = new Date()
+      
+      if (isNaN(modifiedSince.getTime())) {
+        return next()
+      }
+      
+      if (now.getTime() - modifiedSince.getTime() < 5 * 60 * 1000) {
+        return res.status(304).end()
+      }
     }
+    
+    next()
+  } catch (error) {
+    next(error)
   }
-  
-  next()
 }
 
 // Response time optimization
 export const responseTimeOptimization = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now()
   
-  res.on('finish', () => {
+  const cleanup = () => {
+    res.removeListener('finish', onFinish)
+    res.removeListener('close', onClose)
+  }
+  
+  const onFinish = () => {
+    cleanup()
     const duration = Date.now() - start
-    
-    // Add response time header
     res.set('X-Response-Time', `${duration}ms`)
     
-    // Log slow requests
     if (duration > 1000) {
-      console.warn(`Slow request: ${req.method} ${req.url} took ${duration}ms`)
+      console.warn(`Slow request detected: ${req.method} ${req.originalUrl} took ${duration}ms`)
+    }
+  }
+  
+  const onClose = () => {
+    cleanup()
+    const duration = Date.now() - start
+    console.warn(`Request closed prematurely: ${req.method} ${req.originalUrl} after ${duration}ms`)
+  }
+  
+  res.on('finish', onFinish)
+  res.on('close', onClose)
+  
+  next()
+}
+
+// Performance monitoring middleware
+export const performanceMonitor = (req: Request, res: Response, next: NextFunction) => {
+  const start = process.hrtime()
+  const startMemory = process.memoryUsage()
+  
+  res.on('finish', () => {
+    const diff = process.hrtime(start)
+    const duration = diff[0] * 1000 + diff[1] / 1000000
+    const endMemory = process.memoryUsage()
+    
+    const memoryDiff = {
+      rss: endMemory.rss - startMemory.rss,
+      heapTotal: endMemory.heapTotal - startMemory.heapTotal,
+      heapUsed: endMemory.heapUsed - startMemory.heapUsed,
+    }
+    
+    if (duration > 500) {
+      console.warn(`Performance alert: ${req.method} ${req.originalUrl} took ${duration.toFixed(2)}ms`)
+    }
+    
+    if (memoryDiff.heapUsed > 50 * 1024 * 1024) {
+      console.warn(`Memory alert: ${req.method} ${req.originalUrl} used ${(memoryDiff.heapUsed / 1024 / 1024).toFixed(2)}MB`)
     }
   })
   
   next()
 }
 
-// Bundle optimization hints
-export const optimizationHints = (req: Request, res: Response, next: NextFunction) => {
-  // Add hints for HTTP/2 server push
-  res.set('Link', '<https://fonts.googleapis.com/css?family=Roboto:300,400,500>; rel=preload; as=style')
-  
-  // Add resource hints
-  res.set('X-DNS-Prefetch-Control', 'on')
-  
-  next()
-}
-
-// Caching strategy middleware
-export const cachingStrategy = (ttl: number = 300) => {
+// Validate request size middleware
+export const requestSizeValidator = (maxSize: number = 1024 * 1024) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Set cache control headers
-    if (req.method === 'GET') {
-      res.set('Cache-Control', `public, max-age=${ttl}`)
-      res.set('Vary', 'Accept-Encoding')
-    } else {
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate')
-      res.set('Pragma', 'no-cache')
-      res.set('Expires', '0')
+    try {
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10)
+      
+      if (contentLength > maxSize) {
+        return res.status(413).json({
+          success: false,
+          message: `Request entity too large. Maximum size is ${maxSize / 1024 / 1024}MB`,
+        })
+      }
+      
+      next()
+    } catch (error) {
+      next(error)
     }
-    
-    next()
   }
 }
 
-// Optimize for production
-export const productionOptimizations = (req: Request, res: Response, next: NextFunction) => {
-  if (process.env.NODE_ENV === 'production') {
-    // Remove powered-by header
-    res.removeHeader('X-Powered-By')
-    
-    // Add production-specific headers
-    res.set('X-Content-Type-Options', 'nosniff')
-    res.set('X-Frame-Options', 'DENY')
-    res.set('X-XSS-Protection', '1; mode=block')
+// Cache control middleware
+export const cacheControl = (maxAge: number = 300) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.method === 'GET') {
+        res.set('Cache-Control', `public, max-age=${maxAge}`)
+      } else {
+        res.set('Cache-Control', 'no-store')
+      }
+      next()
+    } catch (error) {
+      next(error)
+    }
   }
-  
-  next()
 }

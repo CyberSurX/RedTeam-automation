@@ -22,7 +22,7 @@ A comprehensive bug bounty automation platform designed to streamline security t
 - **White-labeling**: Custom branding for MSP/consulting firms
 - **API-First**: Full REST/GraphQL APIs for integration with SIEM/SOAR
 
-**Contact for Enterprise**: sales@redteam-automation.com | +1-800-SECURE-01
+**Contact for Enterprise**: <sales@redteam-automation.com> | +1-800-SECURE-01
 
 ## 📋 Prerequisites
 
@@ -123,6 +123,7 @@ docker run -p 5432:5432 redteam-database
 ### Authentication Endpoints
 
 #### Register User
+
 ```http
 POST /api/auth/register
 Content-Type: application/json
@@ -135,6 +136,7 @@ Content-Type: application/json
 ```
 
 #### Login
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -146,12 +148,14 @@ Content-Type: application/json
 ```
 
 #### Get Profile
+
 ```http
 GET /api/auth/profile
 Authorization: Bearer <jwt_token>
 ```
 
 #### Logout
+
 ```http
 POST /api/auth/logout
 Authorization: Bearer <jwt_token>
@@ -160,12 +164,14 @@ Authorization: Bearer <jwt_token>
 ### Program Management Endpoints
 
 #### Get All Programs
+
 ```http
 GET /api/programs?page=1&limit=10&status=active
 Authorization: Bearer <jwt_token>
 ```
 
 #### Create Program
+
 ```http
 POST /api/programs
 Authorization: Bearer <jwt_token>
@@ -180,6 +186,7 @@ Content-Type: application/json
 ```
 
 #### Update Program
+
 ```http
 PUT /api/programs/:id
 Authorization: Bearer <jwt_token>
@@ -192,6 +199,7 @@ Content-Type: application/json
 ```
 
 #### Delete Program
+
 ```http
 DELETE /api/programs/:id
 Authorization: Bearer <jwt_token>
@@ -208,11 +216,13 @@ Authorization: Bearer <jwt_token>
 ## 🧪 Testing
 
 ### Run All Tests
+
 ```bash
 npm test
 ```
 
 ### Run Specific Test Suites
+
 ```bash
 # Unit tests
 npm run test:unit
@@ -225,6 +235,7 @@ npm run test:security
 ```
 
 ### Security Testing
+
 ```bash
 # Run security vulnerability scan
 ./scripts/security-scan.sh
@@ -257,22 +268,26 @@ The platform includes built-in monitoring and analytics:
 ### Production Deployment
 
 1. **Environment Setup**
+
    ```bash
    cp .env.example .env.production
    # Edit production environment variables
    ```
 
 2. **Build Application**
+
    ```bash
    npm run build
    ```
 
 3. **Database Migration**
+
    ```bash
    npm run db:migrate:prod
    ```
 
 4. **Start Production Server**
+
    ```bash
    npm start
    ```
@@ -329,6 +344,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For support and questions:
+
 - Create an issue in the GitHub repository
 - Check the [documentation](docs/)
 - Review the [testing guide](docs/testing.md)

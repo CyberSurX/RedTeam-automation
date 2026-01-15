@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -84,173 +85,59 @@ export const Findings: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
-    // Simulate fetching findings
     fetchFindings();
-  }, []);
+  }, [searchTerm, filterSeverity, filterStatus, sortBy, sortOrder]);
 
   const fetchFindings = async () => {
-    // Mock API call - replace with actual API call
-    setTimeout(() => {
-      setFindings([
-        {
-          id: '1',
-          programId: '1',
-          programName: 'TechCorp Bug Bounty',
-          title: 'SQL Injection in Login Form',
-          description: 'SQL injection vulnerability found in the login form username parameter. An attacker could potentially extract sensitive data from the database.',
-          severity: 'critical',
-          confidence: 95,
-          status: 'confirmed',
-          type: 'sql_injection',
-          target: 'app.techcorp.com/login',
-          cve: 'CVE-2023-1234',
-          cvss: 9.8,
-          remediation: 'Use parameterized queries and input validation',
-          impact: 'Complete database compromise',
-          likelihood: 'High',
-          risk_score: 9.5,
-          tags: ['sql', 'authentication', 'database'],
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          updatedAt: new Date(Date.now() - 3600000).toISOString(),
-          triagedBy: 'security_analyst',
-          triagedAt: new Date(Date.now() - 7200000).toISOString(),
-          reporter: 'automated_scanner',
-          evidence: [
-            {
-              type: 'screenshot',
-              data: '/evidence/sql-injection-proof.png',
-              description: 'Database error revealing table structure'
-            },
-            {
-              type: 'request',
-              data: 'POST /login HTTP/1.1\nContent-Type: application/x-www-form-urlencoded\n\nusername=admin\' OR 1=1--&password=test',
-              description: 'Malicious request payload'
-            }
-          ],
-          comments: [
-            {
-              id: '1',
-              author: 'security_analyst',
-              content: 'Confirmed SQL injection vulnerability. Database version extracted successfully.',
-              createdAt: new Date(Date.now() - 7200000).toISOString()
-            }
-          ]
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/findings', {
+        params: {
+          search: searchTerm,
+          severity: filterSeverity,
+          status: filterStatus,
+          page: 1, // Add pagination support later if needed
+          limit: 100
         },
-        {
-          id: '2',
-          programId: '1',
-          programName: 'TechCorp Bug Bounty',
-          title: 'Cross-Site Scripting (XSS)',
-          description: 'Reflected XSS vulnerability in search parameter allows execution of arbitrary JavaScript.',
-          severity: 'high',
-          confidence: 90,
-          status: 'triaged',
-          type: 'xss',
-          target: 'app.techcorp.com/search',
-          cvss: 8.8,
-          remediation: 'Implement proper input sanitization and output encoding',
-          impact: 'Session hijacking, data theft',
-          likelihood: 'Medium',
-          risk_score: 7.9,
-          tags: ['xss', 'javascript', 'search'],
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          updatedAt: new Date(Date.now() - 10800000).toISOString(),
-          reporter: 'automated_scanner',
-          evidence: [
-            {
-              type: 'screenshot',
-              data: '/evidence/xss-alert.png',
-              description: 'JavaScript alert executed'
-            }
-          ],
-          comments: []
-        },
-        {
-          id: '3',
-          programId: '2',
-          programName: 'FinanceApp Security',
-          title: 'Missing Security Headers',
-          description: 'Content-Security-Policy header is missing, increasing risk of XSS attacks.',
-          severity: 'medium',
-          confidence: 100,
-          status: 'false_positive',
-          type: 'misconfiguration',
-          target: 'api.financeapp.com',
-          cvss: 4.3,
-          remediation: 'Add Content-Security-Policy header',
-          impact: 'Increased XSS risk',
-          likelihood: 'Low',
-          risk_score: 4.3,
-          tags: ['headers', 'configuration'],
-          createdAt: new Date(Date.now() - 259200000).toISOString(),
-          updatedAt: new Date(Date.now() - 14400000).toISOString(),
-          triagedBy: 'security_analyst',
-          triagedAt: new Date(Date.now() - 14400000).toISOString(),
-          reporter: 'automated_scanner',
-          evidence: [],
-          comments: [
-            {
-              id: '2',
-              author: 'security_analyst',
-              content: 'Marked as false positive. This is a low-risk finding for internal API.',
-              createdAt: new Date(Date.now() - 14400000).toISOString()
-            }
-          ]
-        },
-        {
-          id: '4',
-          programId: '3',
-          programName: 'E-commerce Platform',
-          title: 'Weak SSL/TLS Configuration',
-          description: 'Server supports weak cipher suites and TLS 1.0.',
-          severity: 'high',
-          confidence: 95,
-          status: 'new',
-          type: 'misconfiguration',
-          target: 'ecommerce.com',
-          cvss: 7.5,
-          remediation: 'Disable weak ciphers and TLS 1.0/1.1',
-          impact: 'Man-in-the-middle attacks',
-          likelihood: 'Medium',
-          risk_score: 7.1,
-          tags: ['ssl', 'tls', 'encryption'],
-          createdAt: new Date(Date.now() - 43200000).toISOString(),
-          updatedAt: new Date(Date.now() - 43200000).toISOString(),
-          reporter: 'automated_scanner',
-          evidence: [],
-          comments: []
-        }
-      ]);
-    }, 1000);
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setFindings(response.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch findings", error);
+    }
   };
 
   const handleTriage = async (findingId: string, status: Finding['status']) => {
-    setFindings(prev => prev.map(finding => 
-      finding.id === findingId 
-        ? { 
-            ...finding, 
-            status,
-            triagedBy: 'current_user',
-            triagedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        : finding
-    ));
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`/api/findings/${findingId}/status`, 
+        { status },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        setFindings((prev: Finding[]) => prev.map((f: Finding) => 
+          f.id === findingId 
+            ? { 
+                ...f, 
+                status: status,
+                updatedAt: new Date().toISOString()
+              }
+            : f
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to update finding status", error);
+    }
   };
 
   const handleBulkTriage = async (status: Finding['status']) => {
+    // For bulk triage, we'd need a bulk update endpoint or loop through new findings
     const newFindings = findings.filter(f => f.status === 'new');
-    setFindings(prev => prev.map(finding => 
-      newFindings.includes(finding)
-        ? { 
-            ...finding, 
-            status,
-            triagedBy: 'current_user',
-            triagedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        : finding
-    ));
+    for (const finding of newFindings) {
+      await handleTriage(finding.id, status);
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -317,7 +204,7 @@ export const Findings: React.FC = () => {
   };
 
   const filteredAndSortedFindings = () => {
-    let filtered = findings.filter(finding => {
+    let filtered = findings.filter((finding: Finding) => {
       const matchesSearch = searchTerm === '' || 
         finding.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         finding.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -329,7 +216,7 @@ export const Findings: React.FC = () => {
       return matchesSearch && matchesSeverity && matchesStatus;
     });
 
-    return filtered.sort((a, b) => {
+    return filtered.sort((a: Finding, b: Finding) => {
       let aValue, bValue;
       switch (sortBy) {
         case 'severity':
@@ -378,7 +265,24 @@ export const Findings: React.FC = () => {
           <Button onClick={() => handleBulkTriage('triaged')} variant="outline">
             Bulk Triage
           </Button>
-          <Button>
+          <Button onClick={async () => {
+            try {
+              const token = localStorage.getItem('token');
+              const res = await axios.get('/api/findings/export?format=csv', {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'blob'
+              });
+              const url = window.URL.createObjectURL(new Blob([res.data]));
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', 'findings.csv');
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            } catch (err) {
+              alert('Export failed. Please try again.');
+            }
+          }}>
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
@@ -631,6 +535,36 @@ export const Findings: React.FC = () => {
                       </div>
                     </div>
                     
+                    <div className="flex space-x-2 mt-4">
+                      <button
+                        onClick={() => handleStatusUpdate(finding.id, 'triaged')}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Triage</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const res = await axios.post(`/api/ai/triage/${finding.id}`, {}, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (res.data.success) {
+                              alert(`AI Assessment: ${res.data.data.explanation}\nConfidence: ${res.data.data.confidence}%`);
+                              fetchFindings();
+                            }
+                          } catch (err) {
+                            alert('AI Triage failed. Please try again.');
+                          }
+                        }}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <BrainCircuit className="w-4 h-4" />
+                        <span>AI Triage</span>
+                      </button>
+                    </div>
+
                     <div className="flex justify-end space-x-2 mt-4">
                       <Button size="sm" variant="outline">
                         <Download className="h-3 w-3 mr-1" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -187,112 +188,111 @@ export const Programs: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate fetching programs
     fetchPrograms();
   }, []);
 
   const fetchPrograms = async () => {
     setIsLoading(true);
-    // Mock API call - replace with actual API call
-    setTimeout(() => {
-      setPrograms([
-        {
-          id: '1',
-          name: 'TechCorp Bug Bounty',
-          platform: 'hackerone',
-          url: 'https://hackerone.com/techcorp',
-          status: 'active',
-          scope: ['*.techcorp.com', 'api.techcorp.com', 'app.techcorp.com'],
-          createdAt: '2024-01-15T10:00:00Z',
-          lastScan: '2024-01-20T14:30:00Z',
-          totalFindings: 12,
-          criticalFindings: 2,
-          isAutomated: true,
-          autoRecon: true,
-          autoScan: true,
-          autoReport: false
-        },
-        {
-          id: '2',
-          name: 'FinanceApp Security',
-          platform: 'bugcrowd',
-          url: 'https://bugcrowd.com/financeapp',
-          status: 'active',
-          scope: ['*.financeapp.com', 'api.financeapp.com'],
-          createdAt: '2024-01-10T09:00:00Z',
-          lastScan: '2024-01-19T16:45:00Z',
-          totalFindings: 8,
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/programs', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        // Map backend response to match frontend interface if needed
+        const mappedPrograms = response.data.data.map((p: Program | any) => ({
+          id: p.id,
+          name: p.name,
+          platform: p.platform,
+          url: p.metadata?.url || '',
+          status: p.status,
+          scope: p.scopes?.in_scope || [],
+          createdAt: p.created_at,
+          lastScan: p.updated_at,
+          totalFindings: 0,
           criticalFindings: 0,
-          isAutomated: false,
-          autoRecon: false,
-          autoScan: false,
-          autoReport: false
-        },
-        {
-          id: '3',
-          name: 'E-commerce Platform',
-          platform: 'custom',
-          url: 'https://example.com/security',
-          status: 'paused',
-          scope: ['shop.example.com', 'api.example.com', 'checkout.example.com'],
-          createdAt: '2024-01-05T08:00:00Z',
-          lastScan: '2024-01-18T12:00:00Z',
-          totalFindings: 15,
-          criticalFindings: 1,
-          isAutomated: true,
-          autoRecon: true,
-          autoScan: false,
-          autoReport: false
-        }
-      ]);
+          isAutomated: p.metadata?.isAutomated || false,
+          autoRecon: p.metadata?.autoRecon || false,
+          autoScan: p.metadata?.autoScan || false,
+          autoReport: p.metadata?.autoReport || false
+        }));
+        setPrograms(mappedPrograms);
+      }
+    } catch (error) {
+      console.error("Failed to fetch programs", error);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleCreateProgram = async (programData: Omit<Program, 'id' | 'createdAt' | 'lastScan' | 'totalFindings' | 'criticalFindings'>) => {
-    const newProgram: Program = {
-      ...programData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      lastScan: new Date().toISOString(),
-      totalFindings: 0,
-      criticalFindings: 0
-    };
-    setPrograms([...programs, newProgram]);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/programs', programData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        fetchPrograms(); // Refresh list
+      }
+    } catch (error) {
+      console.error("Failed to create program", error);
+    }
   };
 
   const handleToggleStatus = async (programId: string) => {
-    setPrograms(programs.map(program => 
-      program.id === programId 
-        ? { ...program, status: program.status === 'active' ? 'paused' : 'active' }
-        : program
-    ));
+    try {
+      const token = localStorage.getItem('token');
+      const currentProgram = programs.find(p => p.id === programId);
+      const newStatus = currentProgram?.status === 'active' ? 'paused' : 'active';
+      
+      const response = await axios.patch(`/api/programs/${programId}/status`, 
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.success) {
+        setPrograms((prev: Program[]) => prev.map((p: Program) => 
+          p.id === programId ? { ...p, status: newStatus } : p
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to toggle program status", error);
+    }
   };
 
   const handleDeleteProgram = async (programId: string) => {
     if (window.confirm('Are you sure you want to delete this program?')) {
-      setPrograms(programs.filter(program => program.id !== programId));
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.delete(`/api/programs/${programId}`, {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setPrograms((prev: Program[]) => prev.filter((p: Program) => p.id !== programId));
+        }
+      } catch (error) {
+        console.error("Failed to delete program", error);
+      }
     }
   };
 
-  const getPlatformColor = (platform: string) => {
-    const colors = {
-      hackerone: 'bg-red-100 text-red-800',
-      bugcrowd: 'bg-blue-100 text-blue-800',
-      yeswehack: 'bg-green-100 text-green-800',
-      intigriti: 'bg-purple-100 text-purple-800',
-      custom: 'bg-gray-100 text-gray-800'
+  const getPlatformIcon = (platform: string) => {
+    const icons: Record<string, string> = {
+      hackerone: 'https://www.google.com/s2/favicons?domain=hackerone.com&sz=64',
+      bugcrowd: 'https://www.google.com/s2/favicons?domain=bugcrowd.com&sz=64',
+      yeswehack: 'https://www.google.com/s2/favicons?domain=yeswehack.com&sz=64',
+      intigriti: 'https://www.google.com/s2/favicons?domain=intigriti.com&sz=64',
+      custom: 'https://www.google.com/s2/favicons?domain=github.com&sz=64'
     };
-    return colors[platform] || colors.custom;
+    return icons[platform.toLowerCase()] || icons.custom;
   };
 
   const getStatusColor = (status: string) => {
-    const colors = {
-      active: 'bg-green-100 text-green-800',
-      paused: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-blue-100 text-blue-800'
+    const colors: Record<string, string> = {
+      active: 'bg-green-500/10 text-green-500 border-green-500/20',
+      paused: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+      completed: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
     };
-    return colors[status] || colors.completed;
+    return colors[status.toLowerCase()] || 'bg-gray-500/10 text-gray-500 border-gray-500/20';
   };
 
   if (isLoading) {
@@ -325,9 +325,7 @@ export const Programs: React.FC = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{program.name}</CardTitle>
                 <div className="flex space-x-2">
-                  <Badge className={getPlatformColor(program.platform)}>
-                    {program.platform}
-                  </Badge>
+                  <img src={getPlatformIcon(program.platform)} alt={program.platform} className="w-5 h-5" />
                   <Badge className={getStatusColor(program.status)}>
                     {program.status}
                   </Badge>

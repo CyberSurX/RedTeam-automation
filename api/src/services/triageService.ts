@@ -143,7 +143,7 @@ class TriageService {
           result.statistics.duplicates++;
         } else {
           result.statistics.confirmed++;
-          (result.statistics.severityDistribution as any)[processedFinding.triagedSeverity]++;
+          (result.statistics.severityDistribution as Record<string, number>)[processedFinding.triagedSeverity]++;
         }
       }
 
@@ -174,17 +174,47 @@ class TriageService {
       isFalsePositive: false,
       isDuplicate: false,
       triageReason: '',
-      recommendedAction: ''
+      recommendedAction: '',
+      aiAssessment: null as any
     };
 
-    // Step 1: Check for false positives
-    const falsePositiveCheck = this.checkFalsePositive(finding, config);
-    if (falsePositiveCheck.isFalsePositive) {
-      analysis.isFalsePositive = true;
-      analysis.triagedSeverity = 'info';
-      analysis.triageReason = falsePositiveCheck.reason;
-      analysis.recommendedAction = 'Mark as informational only';
-      return analysis;
+    // Step 1: AI Analysis (New)
+    try {
+      const { aiService } = await import('./aiService');
+      const aiResult = await aiService.analyzeFinding(finding);
+      analysis.aiAssessment = aiResult;
+      analysis.confidence = aiResult.confidence;
+      
+      if (aiResult.isFalsePositive) {
+        analysis.isFalsePositive = true;
+        analysis.triagedSeverity = 'informational';
+        analysis.triageReason = `AI Triage: ${aiResult.explanation}`;
+        analysis.recommendedAction = 'Marked as false positive by Gemini.';
+        return analysis;
+      }
+
+      if (aiResult.isDuplicate) {
+        analysis.isDuplicate = true;
+        analysis.triageReason = `AI Triage: Potential duplicate. ${aiResult.explanation}`;
+        analysis.recommendedAction = 'Verify and merge with existing finding.';
+        return analysis;
+      }
+
+      analysis.triagedSeverity = aiResult.recommendedSeverity;
+    } catch (err) {
+      logger.error('AI Analysis failed, falling back to rule-based triage:', err);
+    }
+
+    // Step 2: Rule-based checks (Fallback/Additional)
+    if (!analysis.isFalsePositive) {
+      const falsePositiveCheck = this.checkFalsePositive(finding, config);
+      if (falsePositiveCheck.isFalsePositive) {
+        analysis.isFalsePositive = true;
+        analysis.triagedSeverity = 'informational';
+        analysis.triageReason = analysis.triageReason || falsePositiveCheck.reason;
+        analysis.recommendedAction = 'Mark as informational only';
+        return analysis;
+      }
     }
 
     // Step 2: Check for duplicates

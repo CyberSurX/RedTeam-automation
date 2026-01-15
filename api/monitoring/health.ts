@@ -1,41 +1,61 @@
-import { Request, Response } from 'express'
-import os from 'os'
-import process from 'process'
+typescript
+import { Request, Response } from 'express';
+import os from 'os';
+import process from 'process';
+import si from 'systeminformation';
+import { createClient } from 'redis';
+import { Pool } from 'pg';
+
+const redisClient = createClient();
+redisClient.on('error', (err) => console.error('Redis Client Error', err));
+await redisClient.connect();
+
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || '5432'),
+});
 
 interface SystemMetrics {
-  timestamp: number
+  timestamp: number;
   memory: {
-    used: number
-    total: number
-    percentage: number
-  }
+    used: number;
+    total: number;
+    percentage: number;
+  };
   cpu: {
-    usage: number
-    cores: number
-  }
+    usage: number;
+    cores: number;
+  };
   disk: {
-    used: number
-    total: number
-    percentage: number
-  }
+    used: number;
+    total: number;
+    percentage: number;
+  };
   process: {
-    uptime: number
-    memory: number
-    cpu: number
-  }
+    uptime: number;
+    memory: number;
+    cpu: number;
+  };
 }
 
-export const getSystemMetrics = (): SystemMetrics => {
-  const totalMemory = os.totalmem()
-  const freeMemory = os.freemem()
-  const usedMemory = totalMemory - freeMemory
+export const getSystemMetrics = async (): Promise<SystemMetrics> => {
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const usedMemory = totalMemory - freeMemory;
 
-  const cpuUsage = os.loadavg()[0] // 1 minute load average
-  const cpuCores = os.cpus().length
+  const cpuUsage = os.loadavg()[0];
+  const cpuCores = os.cpus().length;
 
-  // Get disk usage (simplified)
-  const diskTotal = 100 * 1024 * 1024 * 1024 // 100GB placeholder
-  const diskUsed = 60 * 1024 * 1024 * 1024  // 60GB placeholder
+  const fs = await si.fsSize();
+  let totalDisk = 0;
+  let usedDisk = 0;
+  for (const disk of fs) {
+    totalDisk += disk.size;
+    usedDisk += disk.used;
+  }
 
   return {
     timestamp: Date.now(),
@@ -49,21 +69,42 @@ export const getSystemMetrics = (): SystemMetrics => {
       cores: cpuCores,
     },
     disk: {
-      used: diskUsed,
-      total: diskTotal,
-      percentage: (diskUsed / diskTotal) * 100,
+      used: usedDisk,
+      total: totalDisk,
+      percentage: (usedDisk / totalDisk) * 100,
     },
     process: {
       uptime: process.uptime(),
       memory: process.memoryUsage().heapUsed,
       cpu: process.cpuUsage().user,
     },
-  }
-}
+  };
+};
 
-export const healthCheck = (req: Request, res: Response) => {
-  const metrics = getSystemMetrics()
-  
+const checkDatabaseConnection = async (): Promise<'healthy' | 'unhealthy'> => {
+  try {
+    const client = await pool.connect();
+    client.release();
+    return 'healthy';
+  } catch (e) {
+    return 'unhealthy';
+  }
+};
+
+const checkRedisConnection = async (): Promise<'healthy' | 'unhealthy'> => {
+  try {
+    await redisClient.ping();
+    return 'healthy';
+  } catch (e) {
+    return 'unhealthy';
+  }
+};
+
+export const healthCheck = async (req: Request, res: Response) => {
+  const metrics = await getSystemMetrics();
+  const dbStatus = await checkDatabaseConnection();
+  const redisStatus = await checkRedisConnection();
+
   const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -85,49 +126,31 @@ export const healthCheck = (req: Request, res: Response) => {
       },
     },
     services: {
-      database: checkDatabaseConnection(),
-      redis: checkRedisConnection(),
+      database: dbStatus,
+      redis: redisStatus,
     },
-  }
+  };
 
   const isHealthy = Object.values(health.metrics).every(m => m.status === 'healthy') &&
-                    Object.values(health.services).every(s => s === 'healthy')
+                    Object.values(health.services).every(s => s === 'healthy');
 
-  res.status(isHealthy ? 200 : 503).json(health)
-}
+  res.status(isHealthy ? 200 : 503).json(health);
+};
 
-const checkDatabaseConnection = (): 'healthy' | 'unhealthy' => {
-  // This would typically test actual database connectivity
-  // For now, return healthy as placeholder
-  return 'healthy'
-}
-
-const checkRedisConnection = (): 'healthy' | 'unhealthy' => {
-  // This would typically test Redis connectivity
-  // For now, return healthy as placeholder
-  return 'healthy'
-}
-
-export const readinessCheck = (req: Request, res: Response) => {
-  const readiness = {
-    status: 'ready',
-    timestamp: new Date().toISOString(),
-    checks: {
-      database: checkDatabaseConnection(),
-      redis: checkRedisConnection(),
-      dependencies: 'healthy',
-    },
+export const readinessCheck = async (req: Request, res: Response) => {
+  try {
+    const dbStatus = await checkDatabaseConnection();
+    const redisStatus = await checkRedisConnection();
+    const isReady = dbStatus === 'healthy' && redisStatus === 'healthy';
+    res.status(isReady ? 200 : 503).json({
+      status: isReady ? 'ready' : 'not ready',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbStatus,
+        redis: redisStatus,
+      },
+    });
+  } catch (e) {
+    res.status(503).json({ status: 'not ready', error: e.message });
   }
-
-  const isReady = Object.values(readiness.checks).every(check => check === 'healthy')
-  
-  res.status(isReady ? 200 : 503).json(readiness)
-}
-
-export const livenessCheck = (req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'alive',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  })
-}
+};

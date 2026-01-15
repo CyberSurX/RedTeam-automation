@@ -102,117 +102,25 @@ export const Scanning: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Simulate fetching scan jobs
+    // Fetch scan jobs from Python gateway via Express bridge
     fetchScanJobs();
+    // Poll for updates every 10 seconds
+    const interval = setInterval(fetchScanJobs, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchScanJobs = async () => {
-    // Mock API call - replace with actual API call
-    setTimeout(() => {
-      setJobs([
-        {
-          id: '1',
-          programId: '1',
-          programName: 'TechCorp Bug Bounty',
-          type: 'full',
-          status: 'running',
-          progress: 45,
-          startTime: new Date(Date.now() - 3600000).toISOString(),
-          targets: ['app.techcorp.com', 'api.techcorp.com', 'admin.techcorp.com'],
-          profile: 'Full Security Audit',
-          findings: {
-            critical: 2,
-            high: 5,
-            medium: 12,
-            low: 23,
-            info: 45
-          },
-          results: [
-            {
-              id: '1',
-              title: 'SQL Injection in Login Form',
-              severity: 'critical',
-              target: 'app.techcorp.com/login',
-              description: 'SQL injection vulnerability found in login form',
-              confidence: 95,
-              cve: 'CVE-2023-1234'
-            },
-            {
-              id: '2',
-              title: 'Cross-Site Scripting (XSS)',
-              severity: 'high',
-              target: 'app.techcorp.com/search',
-              description: 'Reflected XSS vulnerability in search parameter',
-              confidence: 90
-            },
-            {
-              id: '3',
-              title: 'Missing Security Headers',
-              severity: 'medium',
-              target: 'api.techcorp.com',
-              description: 'Missing Content-Security-Policy header',
-              confidence: 100
-            }
-          ]
-        },
-        {
-          id: '2',
-          programId: '2',
-          programName: 'FinanceApp Security',
-          type: 'web',
-          status: 'completed',
-          progress: 100,
-          startTime: new Date(Date.now() - 7200000).toISOString(),
-          endTime: new Date(Date.now() - 3600000).toISOString(),
-          targets: ['financeapp.com', 'api.financeapp.com'],
-          profile: 'Web Application',
-          findings: {
-            critical: 0,
-            high: 2,
-            medium: 8,
-            low: 15,
-            info: 32
-          },
-          results: [
-            {
-              id: '4',
-              title: 'Weak SSL/TLS Configuration',
-              severity: 'high',
-              target: 'financeapp.com',
-              description: 'Weak cipher suites supported',
-              confidence: 85
-            },
-            {
-              id: '5',
-              title: 'Information Disclosure',
-              severity: 'medium',
-              target: 'api.financeapp.com',
-              description: 'Server version disclosed in headers',
-              confidence: 100
-            }
-          ]
-        },
-        {
-          id: '3',
-          programId: '3',
-          programName: 'E-commerce Platform',
-          type: 'port',
-          status: 'failed',
-          progress: 10,
-          startTime: new Date(Date.now() - 1800000).toISOString(),
-          targets: ['ecommerce.com'],
-          profile: 'Port Scan',
-          findings: {
-            critical: 0,
-            high: 0,
-            medium: 0,
-            low: 0,
-            info: 0
-          },
-          results: []
-        }
-      ]);
-    }, 1000);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/scan/jobs', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data) {
+        setJobs(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch scan jobs:', error);
+    }
   };
 
   const handleStartScan = async () => {
@@ -224,62 +132,54 @@ export const Scanning: React.FC = () => {
     const profile = scanProfiles.find(p => p.id === selectedProfile);
     if (!profile) return;
 
-    const newJob: ScanJob = {
-      id: Date.now().toString(),
-      programId: '1',
-      programName: 'Manual Scan',
-      type: profile.type,
-      status: 'pending',
-      progress: 0,
-      startTime: new Date().toISOString(),
-      targets: targets.split('\n').filter(t => t.trim()),
-      profile: profile.name,
-      findings: {
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
-        info: 0
-      },
-      results: []
-    };
+    const targetsList = targets.split('\n').filter((t: string) => t.trim());
 
-    setJobs([newJob, ...jobs]);
-    
-    // Simulate job starting
-    setTimeout(() => {
-      setJobs(prev => prev.map(job => 
-        job.id === newJob.id 
-          ? { ...job, status: 'running', progress: 5 }
-          : job
-      ));
-    }, 2000);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/scan/start', {
+        targets: targetsList,
+        profile: profile.name,
+        intensity: 'normal'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        console.log('Scan started:', response.data);
+        fetchScanJobs();
+      }
+    } catch (error: any) {
+      console.error('Failed to start scan:', error);
+      alert(`Failed to start scan: ${error.response?.data?.error || 'Unknown error'}`);
+    }
 
     setIsNewScanOpen(false);
+    setTargets('');
+    setSelectedProfile('');
   };
 
   const handlePauseJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { ...job, status: 'paused' }
-        : job
-    ));
+    alert("Pause/Resume is currently only available for local agents.");
   };
 
   const handleResumeJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { ...job, status: 'running' }
-        : job
-    ));
+    alert("Pause/Resume is currently only available for local agents.");
   };
 
   const handleStopJob = async (jobId: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { ...job, status: 'failed', progress: job.progress }
-        : job
-    ));
+    if (window.confirm('Are you sure you want to abort this scan mission?')) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.post(`/api/scan/abort/${jobId}`, {}, {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.status === 'aborted' || response.data.success) {
+          fetchScanJobs();
+        }
+      } catch (error) {
+        console.error('Failed to stop job:', error);
+      }
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -541,6 +441,27 @@ export const Scanning: React.FC = () => {
                     </div>
                     
                     <div className="flex justify-end space-x-2 mt-3">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const res = await axios.get(`/api/ai/scan-summary/${job.id}`, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (res.data.success) {
+                              alert(`AI Insights:\n\n${res.data.summary}`);
+                            }
+                          } catch (err) {
+                            alert('Failed to get AI insights.');
+                          }
+                        }}
+                      >
+                        <BrainCircuit className="h-3 w-3 mr-1" />
+                        AI Insights
+                      </Button>
                       <Button size="sm" variant="outline">
                         <Download className="h-3 w-3 mr-1" />
                         Export Report

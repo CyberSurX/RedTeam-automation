@@ -2,6 +2,7 @@
   "name": "redteam-automation-platform",
   "private": true,
   "version": "1.0.0",
+  "author": "Thundernight1 <243298104+Thundernight1@users.noreply.github.com> (https://github.com/Thundernight1)",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
@@ -20,14 +21,12 @@
     "test:unit": "vitest run --reporter=verbose",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "node scripts/security-test.js",
-    "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset",
-    "prisma:generate": "prisma generate",
-    "prisma:studio": "prisma studio"
+    "db:migrate": "echo 'Using TypeORM for migrations'",
+    "db:seed": "echo 'Using TypeORM for seeding'"
   },
   "dependencies": {
-    "@prisma/client": "^5.7.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
+    "@opentelemetry/sdk-node": "^0.210.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -75,6 +74,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@opentelemetry/instrumentation-bunyan": "^0.54.0",
+    "@opentelemetry/instrumentation-winston": "^0.53.0",
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
@@ -103,7 +105,6 @@
     "jsdom": "^23.0.1",
     "nodemon": "^3.0.2",
     "postcss": "^8.5.3",
-    "prisma": "^5.7.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3",

@@ -1,3 +1,4 @@
+typescript
 export interface BugCrowdProgram {
   id: string;
   name: string;
@@ -17,22 +18,95 @@ export interface BugCrowdSubmission {
   submitted_at: string;
 }
 
+export interface VulnerabilitySubmission {
+  programId: string;
+  title: string;
+  description: string;
+  severity: string;
+}
+
 export class BugCrowdClient {
-  private apiKey: string;
-  private baseURL = 'https://api.bugcrowd.com';
+  private readonly apiKey: string;
+  private readonly baseURL = 'https://api.bugcrowd.com';
+  private readonly headers: Record<string, string>;
 
   constructor(apiKey: string) {
-    this.apiKey = apiKey;
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      throw new Error('BugCrowd API key is required and must be a non-empty string');
+    }
+    this.apiKey = apiKey.trim();
+    this.headers = {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
   }
 
   async getPrograms(): Promise<BugCrowdProgram[]> {
-    console.log('BugCrowd API not configured, using mock data');
-    return this.getMockPrograms();
+    try {
+      const response = await fetch(`${this.baseURL}/programs`, {
+        method: 'GET',
+        headers: this.headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`BugCrowd API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format from BugCrowd API');
+      }
+
+      return data.map((program: any) => ({
+        id: program.id || '',
+        name: program.name || '',
+        currency: program.currency || 'USD',
+        reward_range: {
+          min: typeof program.reward_range?.min === 'number' ? program.reward_range.min : 0,
+          max: typeof program.reward_range?.max === 'number' ? program.reward_range.max : 0,
+        },
+      })).filter((program: BugCrowdProgram) => program.id && program.name);
+    } catch (error) {
+      console.error('Failed to fetch BugCrowd programs:', error);
+      throw new Error(`Failed to fetch programs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  async getSubmissions(): Promise<BugCrowdSubmission[]> {
-    console.log('BugCrowd API not configured, using mock data');
-    return this.getMockSubmissions();
+  async getSubmissions(programId?: string): Promise<BugCrowdSubmission[]> {
+    try {
+      const url = programId 
+        ? `${this.baseURL}/programs/${encodeURIComponent(programId)}/submissions`
+        : `${this.baseURL}/submissions`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`BugCrowd API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format from BugCrowd API');
+      }
+
+      return data.map((submission: any) => ({
+        id: submission.id || '',
+        title: submission.title || '',
+        status: submission.status || 'unknown',
+        reward: typeof submission.reward === 'number' ? submission.reward : 0,
+        currency: submission.currency || 'USD',
+        submitted_at: submission.submitted_at || new Date().toISOString(),
+      })).filter((submission: BugCrowdSubmission) => submission.id && submission.title);
+    } catch (error) {
+      console.error('Failed to fetch BugCrowd submissions:', error);
+      throw new Error(`Failed to fetch submissions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async submitVulnerability(
@@ -41,31 +115,73 @@ export class BugCrowdClient {
     description: string,
     severity: string
   ): Promise<string> {
-    console.log('BugCrowd submit mock', { programId, title, severity, descLen: description.length });
-    return 'BUGCROWD-MOCK-' + Math.random().toString(36).substr(2, 9);
+    this.validateVulnerabilitySubmission({ programId, title, description, severity });
+
+    try {
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        severity: severity.trim(),
+        submitted_at: new Date().toISOString(),
+      };
+
+      const response = await fetch(
+        `${this.baseURL}/programs/${encodeURIComponent(programId)}/submissions`,
+        {
+          method: 'POST',
+          headers: this.headers,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`BugCrowd API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.id || typeof data.id !== 'string') {
+        throw new Error('Invalid response from BugCrowd API: missing submission ID');
+      }
+
+      return data.id;
+    } catch (error) {
+      console.error('Failed to submit vulnerability to BugCrowd:', error);
+      throw new Error(`Failed to submit vulnerability: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  private getMockPrograms(): BugCrowdProgram[] {
-    return [
-      {
-        id: 'bc-1',
-        name: 'BugCrowd Test Program',
-        currency: 'USD',
-        reward_range: { min: 100, max: 1000 }
-      }
-    ];
-  }
+  private validateVulnerabilitySubmission(submission: VulnerabilitySubmission): void {
+    const { programId, title, description, severity } = submission;
 
-  private getMockSubmissions(): BugCrowdSubmission[] {
-    return [
-      {
-        id: 'bc-sub-1',
-        title: 'SQL Injection Found',
-        status: 'new',
-        reward: 0,
-        currency: 'USD',
-        submitted_at: new Date().toISOString()
-      }
-    ];
+    if (!programId || typeof programId !== 'string' || programId.trim().length === 0) {
+      throw new Error('Program ID is required and must be a non-empty string');
+    }
+
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      throw new Error('Title is required and must be a non-empty string');
+    }
+
+    if (!description || typeof description !== 'string' || description.trim().length === 0) {
+      throw new Error('Description is required and must be a non-empty string');
+    }
+
+    if (!severity || typeof severity !== 'string' || severity.trim().length === 0) {
+      throw new Error('Severity is required and must be a non-empty string');
+    }
+
+    const validSeverities = ['low', 'medium', 'high', 'critical'];
+    if (!validSeverities.includes(severity.toLowerCase())) {
+      throw new Error(`Severity must be one of: ${validSeverities.join(', ')}`);
+    }
+
+    if (title.trim().length > 200) {
+      throw new Error('Title must be 200 characters or less');
+    }
+
+    if (description.trim().length > 10000) {
+      throw new Error('Description must be 10000 characters or less');
+    }
   }
 }
