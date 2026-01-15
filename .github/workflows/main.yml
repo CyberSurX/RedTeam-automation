@@ -1,0 +1,44 @@
+name: Enterprise CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Root Dependencies
+        run: npm ci
+        
+      - name: Install API Dependencies
+        working-directory: ./api
+        run: npm ci
+        
+      - name: Linting & Security Check
+        run: npm run lint
+        
+      - name: Build Backend
+        working-directory: ./api
+        run: npm run build
+        
+      - name: Build Frontend
+        run: npm run build:frontend
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Production Deployment Trigger
+        run: echo "Code is validated and ready for production deployment."

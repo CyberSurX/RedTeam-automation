@@ -25,6 +25,7 @@
     "db:seed": "echo 'Using TypeORM for seeding'"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
     "@opentelemetry/sdk-node": "^0.210.0",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -80,6 +81,7 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "@types/axios": "^0.9.36",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
@@ -88,7 +90,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^1.4.11",
-    "@types/node": "^22.19.0",
+    "@types/node": "^22.19.7",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vercel/node": "^5.5.5",

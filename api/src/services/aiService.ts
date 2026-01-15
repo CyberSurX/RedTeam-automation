@@ -46,7 +46,7 @@ class AIService {
         }
       });
 
-      return response.data.response;
+      return (response.data as any).response;
     } catch (error: any) {
       logger.error('Ollama API call failed:', error.response?.data || error.message);
       throw error;
