@@ -1,4 +1,3 @@
-typescript
 import { query as pool } from '../src/config/database'
 import bcrypt from 'bcrypt'
 

@@ -1,4 +1,3 @@
-typescript
 import { useState, useLayoutEffect, useCallback } from 'react';
 
 type Theme = 'light' | 'dark';

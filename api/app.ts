@@ -1,4 +1,3 @@
-typescript
 /**
  * API Server for RedTeam-automation
  */

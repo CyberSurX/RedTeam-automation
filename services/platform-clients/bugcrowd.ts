@@ -1,4 +1,3 @@
-typescript
 export interface BugCrowdProgram {
   id: string;
   name: string;

@@ -1,4 +1,3 @@
-typescript
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 export interface HackerOneProgram {

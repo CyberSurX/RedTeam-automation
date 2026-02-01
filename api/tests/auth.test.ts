@@ -1,4 +1,3 @@
-typescript
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { app } from '../src/app'
 import { query as pool } from '../src/config/database'

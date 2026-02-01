@@ -1,4 +1,3 @@
-typescript
 export interface DevPostProject {
   id: string;
   title: string;

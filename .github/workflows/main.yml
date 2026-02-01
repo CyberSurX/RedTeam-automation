@@ -18,20 +18,18 @@ jobs:
           node-version: '20'
           cache: 'npm'
           
-      - name: Install Root Dependencies
+      - name: Install Dependencies
         run: npm ci
-        
-      - name: Install API Dependencies
-        working-directory: ./api
-        run: npm ci
-        
-      - name: Linting & Security Check
+
+      - name: Run Linting
         run: npm run lint
-        
+
+      - name: Run Type Checking
+        run: npm run type-check
+
       - name: Build Backend
-        working-directory: ./api
-        run: npm run build
-        
+        run: npm run build:backend
+
       - name: Build Frontend
         run: npm run build:frontend
 

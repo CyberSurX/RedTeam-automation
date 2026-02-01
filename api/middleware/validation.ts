@@ -1,4 +1,3 @@
-typescript
 import { Request, Response, NextFunction } from 'express'
 import { validationResult, ValidationError as ExpressValidationError } from 'express-validator'
 import { ValidationError } from '../utils/errors'

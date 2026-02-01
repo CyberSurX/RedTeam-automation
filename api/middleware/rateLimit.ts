@@ -1,4 +1,3 @@
-typescript
 import { Request, Response, NextFunction } from 'express'
 import { rateLimit, RateLimitRequestHandler } from 'express-rate-limit'
 
