@@ -8,7 +8,7 @@ import { AppError } from '../utils/errors'
 export const authorize = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     // req.user is populated by the authenticateToken middleware
-    const user = (req as any).user
+    const user = (req as Record<string, unknown>).user
 
     if (!user) {
       return next(new AppError('Authentication required to access this resource', 401))

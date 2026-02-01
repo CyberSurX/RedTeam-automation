@@ -13,7 +13,7 @@ import { Server } from 'socket.io'
 let getNodeAutoInstrumentations: (opts?: Record<string, unknown>) => InstrumentationOption[] = () => []
 
 try {
-  const autoInstr = require('@opentelemetry/auto-instrumentations-node')
+  const autoInstr = await import('@opentelemetry/auto-instrumentations-node')
   if (autoInstr && typeof autoInstr.getNodeAutoInstrumentations === 'function') {
     getNodeAutoInstrumentations = autoInstr.getNodeAutoInstrumentations
   }

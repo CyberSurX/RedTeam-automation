@@ -130,15 +130,18 @@ export const auditLogger = winston.createLogger({
 // Log rotation for production
 if (process.env.NODE_ENV === 'production') {
   // Add daily rotate file transport
-  const DailyRotateFile = require('winston-daily-rotate-file');
-  
-  logger.add(new DailyRotateFile({
-    filename: path.join(logsDir, 'application-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    zippedArchive: true,
-    maxSize: '20m',
-    maxFiles: '14d',
-  }));
+  import('winston-daily-rotate-file').then((module) => {
+    const DailyRotateFile = module.default;
+    logger.add(new DailyRotateFile({
+      filename: path.join(logsDir, 'application-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '14d',
+    }));
+  }).catch((error) => {
+    console.error('Failed to load winston-daily-rotate-file:', error);
+  });
 }
 
 // Error handling for logger

@@ -59,6 +59,7 @@ export class User {
 
   // Get public profile (exclude sensitive data)
   getPublicProfile() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...publicProfile } = this
     return publicProfile
   }

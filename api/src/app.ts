@@ -50,7 +50,7 @@ app.use(helmet({
 
 // CORS configuration
 const corsOptions = {
-    origin: (origin: string | undefined, callback: Function) => {
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
         const allowedOrigins = [
             'http://localhost:3000',
             'http://localhost:3001',

@@ -15,9 +15,9 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
   try {
     const response = await axios.get(`${PYTHON_GATEWAY_URL}/api/v1/health`, { timeout: 5000 });
     res.json(response.data);
-  } catch (error) {
-    res.status(503).json({ 
-      status: 'error', 
+  } catch {
+    res.status(503).json({
+      status: 'error',
       message: 'Python scanning gateway unavailable',
       gateway_url: PYTHON_GATEWAY_URL
     });
@@ -27,7 +27,7 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
 // Start a new scan/mission
 router.post('/start', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { targets, profile, intensity = 'normal' } = req.body;
+    const { targets, intensity = 'normal' } = req.body;
     
     if (!targets || !Array.isArray(targets) || targets.length === 0) {
       res.status(400).json({ error: 'targets array is required' });
@@ -89,7 +89,7 @@ router.get('/jobs', async (req: Request, res: Response): Promise<void> => {
     );
     
     // Transform to match frontend expected format
-    const jobs = response.data.missions?.map((mission: any) => ({
+    const jobs = response.data.missions?.map((mission: unknown) => ({
       id: mission.mission_id,
       programId: mission.mission_id,
       programName: mission.mission_name || 'Manual Scan',

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Shield, 
-  Target, 
+import {
+  Play,
+  Pause,
+  Shield,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Settings,
   Download,
   Eye,
@@ -116,7 +114,7 @@ export const Scanning: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data) {
-        setJobs(response.data);
+        setJobs(response.data as ScanJob[]);
       }
     } catch (error) {
       console.error('Failed to fetch scan jobs:', error);
@@ -158,11 +156,11 @@ export const Scanning: React.FC = () => {
     setSelectedProfile('');
   };
 
-  const handlePauseJob = async (jobId: string) => {
+  const handlePauseJob = async () => {
     alert("Pause/Resume is currently only available for local agents.");
   };
 
-  const handleResumeJob = async (jobId: string) => {
+  const handleResumeJob = async () => {
     alert("Pause/Resume is currently only available for local agents.");
   };
 
@@ -173,7 +171,7 @@ export const Scanning: React.FC = () => {
         const response = await axios.post(`/api/scan/abort/${jobId}`, {}, {
            headers: { Authorization: `Bearer ${token}` }
         });
-        if (response.data.status === 'aborted' || response.data.success) {
+        if ((response.data as any).status === 'aborted' || (response.data as any).success) {
           fetchScanJobs();
         }
       } catch (error) {
@@ -320,7 +318,7 @@ export const Scanning: React.FC = () => {
                   </Badge>
                   {job.status === 'running' && (
                     <div className="flex space-x-1">
-                      <Button size="sm" variant="outline" onClick={() => handlePauseJob(job.id)}>
+                      <Button size="sm" variant="outline" onClick={() => handlePauseJob()}>
                         <Pause className="h-3 w-3" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleStopJob(job.id)}>
@@ -329,7 +327,7 @@ export const Scanning: React.FC = () => {
                     </div>
                   )}
                   {job.status === 'paused' && (
-                    <Button size="sm" variant="outline" onClick={() => handleResumeJob(job.id)}>
+                    <Button size="sm" variant="outline" onClick={() => handleResumeJob()}>
                       <Play className="h-3 w-3" />
                     </Button>
                   )}
@@ -441,27 +439,6 @@ export const Scanning: React.FC = () => {
                     </div>
                     
                     <div className="flex justify-end space-x-2 mt-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                        onClick={async () => {
-                          try {
-                            const token = localStorage.getItem('token');
-                            const res = await axios.get(`/api/ai/scan-summary/${job.id}`, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            });
-                            if (res.data.success) {
-                              alert(`AI Insights:\n\n${res.data.summary}`);
-                            }
-                          } catch (err) {
-                            alert('Failed to get AI insights.');
-                          }
-                        }}
-                      >
-                        <BrainCircuit className="h-3 w-3 mr-1" />
-                        AI Insights
-                      </Button>
                       <Button size="sm" variant="outline">
                         <Download className="h-3 w-3 mr-1" />
                         Export Report

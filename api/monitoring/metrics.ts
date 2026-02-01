@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { performance } from 'perf_hooks'
-import logger, { apiLogger } from '../utils/logger'
+import { apiLogger } from '../utils/logger'
 
 interface MetricData {
   timestamp: number
@@ -113,7 +113,7 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
 
   res.send = function(data) {
     const responseTime = performance.now() - start
-    const userId = (req as any).user?.id
+    const userId = (req as Record<string, unknown>).user?.id as string | undefined
 
     const metricData: MetricData = {
       timestamp: Date.now(),

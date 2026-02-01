@@ -38,7 +38,7 @@ const generateToken = (user: User): string => {
   return jwt.sign(payload, JWT_SECRET, options)
 }
 
-const authenticate = (req: Request, res: Response, next: Function) => {
+const authenticate = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized' })
@@ -49,7 +49,7 @@ const authenticate = (req: Request, res: Response, next: Function) => {
     const decoded = jwt.verify(token, JWT_SECRET)
     req.user = decoded
     next()
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Unauthorized' })
   }
 }

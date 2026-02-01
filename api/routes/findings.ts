@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from 'express'
+import { Router, type Request, type Response, type NextFunction } from 'express'
 import { getRepository } from 'typeorm'
 import { Finding } from '../src/entities/Finding'
 import { asyncHandler } from '../middleware/errorHandler'
@@ -10,7 +10,7 @@ const router = Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production'
 
 // Authentication middleware
-const authenticateToken = (req: Request, res: Response, next: Function): void => {
+const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization']
   const token = authHeader && authHeader.split(' ')[1]
 
@@ -19,12 +19,12 @@ const authenticateToken = (req: Request, res: Response, next: Function): void =>
     return
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: unknown, user: unknown) => {
     if (err) {
       res.status(403).json({ error: 'Invalid or expired token' })
       return
     }
-    req.user = user
+    (req as Record<string, unknown>).user = user
     next()
   })
 }

@@ -16,7 +16,7 @@ router.post('/triage/:id', asyncHandler(async (req: Request, res: Response) => {
     return res.status(404).json({ success: false, message: 'Finding not found' })
   }
 
-  const result = await aiService.analyzeFinding(finding as any)
+  const result = await aiService.analyzeFinding(finding as unknown)
   
   res.json({
     success: true,

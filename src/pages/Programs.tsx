@@ -3,19 +3,15 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { 
-  Plus, 
-  Target, 
-  Globe, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  Edit,
-  Trash2,
+import {
+  Plus,
+  Globe,
+  Clock,
+  CheckCircle,
   Play,
   Pause,
-  Settings
+  Settings,
+  Trash2
 } from 'lucide-react';
 
 interface Program {
@@ -198,9 +194,9 @@ export const Programs: React.FC = () => {
       const response = await axios.get('/api/programs', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data.success) {
+      if ((response.data as any).success) {
         // Map backend response to match frontend interface if needed
-        const mappedPrograms = response.data.data.map((p: Program | any) => ({
+        const mappedPrograms = (response.data as any).data.map((p: Program | any) => ({
           id: p.id,
           name: p.name,
           platform: p.platform,
@@ -231,7 +227,7 @@ export const Programs: React.FC = () => {
       const response = await axios.post('/api/programs', programData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data.success) {
+      if ((response.data as any).success) {
         fetchPrograms(); // Refresh list
       }
     } catch (error) {
@@ -244,13 +240,13 @@ export const Programs: React.FC = () => {
       const token = localStorage.getItem('token');
       const currentProgram = programs.find(p => p.id === programId);
       const newStatus = currentProgram?.status === 'active' ? 'paused' : 'active';
-      
-      const response = await axios.patch(`/api/programs/${programId}/status`, 
+
+      const response = await axios.patch(`/api/programs/${programId}/status`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (response.data.success) {
-        setPrograms((prev: Program[]) => prev.map((p: Program) => 
+      if ((response.data as any).success) {
+        setPrograms((prev: Program[]) => prev.map((p: Program) =>
           p.id === programId ? { ...p, status: newStatus } : p
         ));
       }
@@ -266,7 +262,7 @@ export const Programs: React.FC = () => {
         const response = await axios.delete(`/api/programs/${programId}`, {
            headers: { Authorization: `Bearer ${token}` }
         });
-        if (response.data.success) {
+        if ((response.data as any).success) {
           setPrograms((prev: Program[]) => prev.filter((p: Program) => p.id !== programId));
         }
       } catch (error) {

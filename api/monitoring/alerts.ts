@@ -10,7 +10,7 @@ interface Alert {
   timestamp: number
   acknowledged: boolean
   source: string
-  details?: any
+  details?: unknown
 }
 
 interface NotificationConfig {

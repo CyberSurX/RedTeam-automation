@@ -2,29 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { 
-  Key, 
-  Shield, 
-  Settings as SettingsIcon,
+import {
+  Key,
+  Shield,
   Save,
   RefreshCw,
   Eye,
   EyeOff,
   CheckCircle,
   XCircle,
-  AlertTriangle,
-  Globe,
-  DollarSign,
-  User,
-  Lock,
-  Mail,
-  Bell,
-  Database,
-  Activity,
-  Zap,
-  Filter,
   Download,
-  Upload
+  Upload,
+  User
 } from 'lucide-react';
 
 interface APIKey {
@@ -261,7 +250,7 @@ export const Settings: React.FC = () => {
         if (settings.userProfile) setUserProfile(settings.userProfile);
         setHasChanges(true);
         alert('Settings imported successfully!');
-      } catch (error) {
+      } catch {
         alert('Invalid settings file');
       }
     };

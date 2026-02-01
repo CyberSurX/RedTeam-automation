@@ -13,7 +13,7 @@ export interface AITriageResult {
 
 class AIService {
   private genAI?: GoogleGenerativeAI;
-  private geminiModel?: any;
+  private geminiModel?: unknown;
   private backend: 'gemini' | 'ollama';
   private ollamaApiKey: string;
   private ollamaModel: string;
@@ -46,9 +46,10 @@ class AIService {
         }
       });
 
-      return (response.data as any).response;
-    } catch (error: any) {
-      logger.error('Ollama API call failed:', error.response?.data || error.message);
+      return (response.data as Record<string, unknown>).response as string;
+    } catch (error: unknown) {
+      const err = error as Record<string, unknown>;
+      logger.error('Ollama API call failed:', (err.response as Record<string, unknown>)?.data || (err as Record<string, unknown>).message);
       throw error;
     }
   }

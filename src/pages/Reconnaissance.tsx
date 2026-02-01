@@ -7,13 +7,10 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Search,
   Globe,
-  Target,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Settings,
   Download,
   Eye

@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
+import fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -267,7 +268,6 @@ class ScanningService {
       await execAsync(command, { timeout: 600000 }); // 10 minutes
 
       // Read results from JSON file
-      const fs = require('fs');
       const sslResults = JSON.parse(fs.readFileSync('/tmp/ssl_results.json', 'utf8'));
 
       // Clean up temp file

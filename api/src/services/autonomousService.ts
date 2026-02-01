@@ -40,7 +40,7 @@ class AutonomousService {
     const programs = programsResult.rows;
     logger.info(`Orchestrator: Found ${programs.length} programs requiring auto-scan.`);
 
-    for (const program of programs as any[]) {
+    for (const program of programs as unknown[]) {
       try {
         await scanningService.startScan(program.id, {
           target: program.scope.split('\n')[0], // Use first target in scope

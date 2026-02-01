@@ -3,21 +3,14 @@ import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { 
-  AlertTriangle, 
-  Shield, 
-  Target, 
-  Clock,
-  CheckCircle,
-  XCircle,
+import {
+  Target,
   Filter,
   Search,
   Download,
   Eye,
   Edit,
   Trash2,
-  ArrowUp,
-  ArrowDown,
   Tag,
   User,
   Calendar
@@ -70,7 +63,6 @@ interface TriageConfig {
 export const Findings: React.FC = () => {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
-  const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const [triageConfig, setTriageConfig] = useState<TriageConfig>({
     autoTriage: true,
     severityThreshold: 'medium',
@@ -81,8 +73,8 @@ export const Findings: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'severity' | 'confidence' | 'createdAt' | 'risk_score'>('severity');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy] = useState<'severity' | 'confidence' | 'createdAt' | 'risk_score'>('severity');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchFindings();
@@ -101,8 +93,8 @@ export const Findings: React.FC = () => {
         },
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data.success) {
-        setFindings(response.data.data);
+      if ((response.data as any).success) {
+        setFindings((response.data as any).data);
       }
     } catch (error) {
       console.error("Failed to fetch findings", error);
@@ -116,11 +108,11 @@ export const Findings: React.FC = () => {
         { status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (response.data.success) {
-        setFindings((prev: Finding[]) => prev.map((f: Finding) => 
-          f.id === findingId 
-            ? { 
-                ...f, 
+      if ((response.data as any).success) {
+        setFindings((prev: Finding[]) => prev.map((f: Finding) =>
+          f.id === findingId
+            ? {
+                ...f,
                 status: status,
                 updatedAt: new Date().toISOString()
               }
@@ -204,7 +196,7 @@ export const Findings: React.FC = () => {
   };
 
   const filteredAndSortedFindings = () => {
-    let filtered = findings.filter((finding: Finding) => {
+    const filtered = findings.filter((finding: Finding) => {
       const matchesSearch = searchTerm === '' || 
         finding.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         finding.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -219,11 +211,12 @@ export const Findings: React.FC = () => {
     return filtered.sort((a: Finding, b: Finding) => {
       let aValue, bValue;
       switch (sortBy) {
-        case 'severity':
+        case 'severity': {
           const severityOrder = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
           aValue = severityOrder[a.severity];
           bValue = severityOrder[b.severity];
           break;
+        }
         case 'confidence':
           aValue = a.confidence;
           bValue = b.confidence;
@@ -242,15 +235,6 @@ export const Findings: React.FC = () => {
       
       return sortOrder === 'desc' ? bValue - aValue : aValue - bValue;
     });
-  };
-
-  const handleSort = (field: typeof sortBy) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
   };
 
   return (
@@ -272,7 +256,7 @@ export const Findings: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob'
               });
-              const url = window.URL.createObjectURL(new Blob([res.data]));
+              const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
               const link = document.createElement('a');
               link.href = url;
               link.setAttribute('download', 'findings.csv');
@@ -537,31 +521,10 @@ export const Findings: React.FC = () => {
                     
                     <div className="flex space-x-2 mt-4">
                       <button
-                        onClick={() => handleStatusUpdate(finding.id, 'triaged')}
+                        onClick={() => handleTriage(finding.id, 'triaged')}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
                       >
-                        <ShieldCheck className="w-4 h-4" />
                         <span>Triage</span>
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const token = localStorage.getItem('token');
-                            const res = await axios.post(`/api/ai/triage/${finding.id}`, {}, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            });
-                            if (res.data.success) {
-                              alert(`AI Assessment: ${res.data.data.explanation}\nConfidence: ${res.data.data.confidence}%`);
-                              fetchFindings();
-                            }
-                          } catch (err) {
-                            alert('AI Triage failed. Please try again.');
-                          }
-                        }}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <BrainCircuit className="w-4 h-4" />
-                        <span>AI Triage</span>
                       </button>
                     </div>
 

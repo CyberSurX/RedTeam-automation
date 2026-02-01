@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       const response = await axios.get('/api/auth/profile');
-      setUser(response.data);
+      setUser((response.data as any) as User);
     } catch (error) {
       // Token might be invalid
       localStorage.removeItem('token');
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user: userData } = response.data;
+      const { token, user: userData } = (response.data as any);
 
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       const response = await axios.post('/api/auth/register', { email, password, name });
-      const { token, user: userData } = response.data;
+      const { token, user: userData } = (response.data as any);
 
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

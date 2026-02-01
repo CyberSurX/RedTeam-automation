@@ -2,17 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { 
-  FileText, 
-  Send, 
-  Download, 
-  Eye, 
-  Plus, 
+import {
+  Send,
+  Download,
+  Eye,
+  Plus,
   Settings,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   Filter,
   Edit,
   Trash2,

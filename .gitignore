@@ -31,3 +31,14 @@ dist-ssr
 
 # GitHub App credentials
 gha-creds-*.json
+# Temporary cleanup folder
+temporary_cleanup/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Security reports (generated)
+security-reports/
+
+# macOS
+.DS_Store

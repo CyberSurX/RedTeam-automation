@@ -1,5 +1,6 @@
 import { query as pool } from '../src/config/database'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 
 export async function createTestUser() {
   const username = `testuser_${Date.now()}`;
@@ -14,7 +15,6 @@ export async function createTestUser() {
 }
 
 export async function getAuthToken(email: string, password: string) {
-  const jwt = require('jsonwebtoken');
   const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
   const user = result.rows[0];
 

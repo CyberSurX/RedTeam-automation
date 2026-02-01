@@ -5,8 +5,7 @@ import { AppError } from '../utils/errors'
 export const errorHandler = (
   err: Error,
   req: Request,
-  res: Response,
-  next: NextFunction
+  res: Response
 ) => {
   let error: AppError
 
@@ -61,7 +60,7 @@ export const notFound = (req: Request, res: Response, next: NextFunction) => {
   next(error)
 }
 
-export const asyncHandler = <T extends Function>(fn: T) => 
+export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next)
   }

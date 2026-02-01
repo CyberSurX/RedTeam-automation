@@ -55,7 +55,7 @@ export class Finding {
   }[]
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   estimated_reward: number

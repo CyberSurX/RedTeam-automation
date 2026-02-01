@@ -85,7 +85,7 @@ const checkDatabaseConnection = async (): Promise<'healthy' | 'unhealthy'> => {
     const client = await pool.connect();
     client.release();
     return 'healthy';
-  } catch (e) {
+  } catch {
     return 'unhealthy';
   }
 };
@@ -94,7 +94,7 @@ const checkRedisConnection = async (): Promise<'healthy' | 'unhealthy'> => {
   try {
     await redisClient.ping();
     return 'healthy';
-  } catch (e) {
+  } catch {
     return 'unhealthy';
   }
 };

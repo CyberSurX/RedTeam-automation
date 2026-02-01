@@ -48,12 +48,12 @@ export class CacheManager {
         userId: req.user?.id,
       }
       
-      const keyString = JSON.stringify(keyData, (key, value) => {
+      const keyString = JSON.stringify(keyData, (_key, value) => {
         if (typeof value === 'object' && value !== null) {
-          return Object.keys(value).sort().reduce((sorted, key) => {
-            sorted[key] = value[key]
+          return Object.keys(value).sort().reduce((sorted, objKey) => {
+            sorted[objKey] = value[objKey]
             return sorted
-          }, {} as any)
+          }, {} as Record<string, unknown>)
         }
         return value
       })
@@ -64,14 +64,14 @@ export class CacheManager {
     }
   }
 
-  get(key: string): any {
+  get(key: string): unknown {
     if (!key || typeof key !== 'string') {
       throw new Error('Cache key must be a non-empty string')
     }
     return this.cache.get(key)
   }
 
-  set(key: string, data: any, ttl?: number): boolean {
+  set(key: string, data: unknown, ttl?: number): boolean {
     if (!key || typeof key !== 'string') {
       throw new Error('Cache key must be a non-empty string')
     }
@@ -145,10 +145,10 @@ export const cacheMiddleware = (ttl: number = 300) => {
 
       const originalJson = res.json.bind(res)
 
-      res.json = function(data: any) {
+      res.json = function(data: unknown) {
         try {
-          if (res.statusCode === 200 && data && data.success !== false) {
-            const dataToCache = data.data || data
+          if (res.statusCode === 200 && data && (data as Record<string, unknown>).success !== false) {
+            const dataToCache = (data as Record<string, unknown>).data || data
             cacheManager.set(cacheKey, dataToCache, ttl)
             res.set('X-Cache', 'MISS')
           }
@@ -172,7 +172,7 @@ export const invalidateCache = (pattern?: string) => {
     
     const originalJson = res.json.bind(res)
 
-    res.json = function(data: any) {
+    res.json = function(data: unknown) {
       try {
         if (res.statusCode >= 200 && res.statusCode < 300 && req.method !== 'GET') {
           if (pattern) {

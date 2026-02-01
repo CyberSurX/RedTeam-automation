@@ -57,11 +57,11 @@ setupQueueHandlers(reportingQueue, 'Reporting');
 
 // Job processors
 reconQueue.process(async (job) => {
-  const { jobId, programId, config } = job.data;
+  const { jobId, config } = job.data as Record<string, unknown>;
   logger.info(`Processing recon job ${jobId}`);
-  
+
   try {
-    const results = await reconService.executeRecon(jobId, config);
+    const results = await reconService.executeRecon(jobId as string, config);
     return { success: true, results };
   } catch (error) {
     logger.error(`Recon job ${jobId} failed:`, error);
@@ -70,11 +70,11 @@ reconQueue.process(async (job) => {
 });
 
 scanningQueue.process(async (job) => {
-  const { jobId, programId, config } = job.data;
+  const { jobId, config } = job.data as Record<string, unknown>;
   logger.info(`Processing scanning job ${jobId}`);
-  
+
   try {
-    const results = await scanningService.executeScanning(jobId, config);
+    const results = await scanningService.executeScanning(jobId as string, config);
     return { success: true, results };
   } catch (error) {
     logger.error(`Scanning job ${jobId} failed:`, error);
@@ -83,11 +83,11 @@ scanningQueue.process(async (job) => {
 });
 
 exploitationQueue.process(async (job) => {
-  const { jobId, programId, config } = job.data;
+  const { jobId, config } = job.data as Record<string, unknown>;
   logger.info(`Processing exploitation job ${jobId}`);
-  
+
   try {
-    const results = await exploitationService.executeExploitation(jobId, config);
+    const results = await exploitationService.executeExploitation(jobId as string, config);
     return { success: true, results };
   } catch (error) {
     logger.error(`Exploitation job ${jobId} failed:`, error);
@@ -122,7 +122,7 @@ reportingQueue.process(async (job) => {
 });
 
 // Job management functions
-export async function addJob(queueName: string, data: any): Promise<string> {
+export async function addJob(queueName: string, data: unknown): Promise<string> {
   let queue: Queue.Queue;
   
   switch (queueName) {
@@ -163,7 +163,7 @@ export async function addJob(queueName: string, data: any): Promise<string> {
   return job.id.toString();
 }
 
-export async function getJobStatus(jobId: string): Promise<any> {
+export async function getJobStatus(jobId: string): Promise<unknown> {
   const queues = [reconQueue, scanningQueue, exploitationQueue, triageQueue, reportingQueue];
   
   for (const queue of queues) {
@@ -210,8 +210,8 @@ export async function cancelJob(jobId: string): Promise<boolean> {
   return false;
 }
 
-export async function getQueueStats(): Promise<any> {
-  const stats = {};
+export async function getQueueStats(): Promise<unknown> {
+  const stats: Record<string, unknown> = {};
   const queues = [
     { name: 'recon', queue: reconQueue },
     { name: 'scanning', queue: scanningQueue },

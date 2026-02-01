@@ -62,7 +62,7 @@ app.use(express.json({
   verify: (req: Request, res: Response, buf: Buffer) => {
     try {
       JSON.parse(buf.toString())
-    } catch (error) {
+    } catch {
       throw new Error('Invalid JSON payload')
     }
   }
@@ -114,7 +114,7 @@ app.use('/api/*', (req: Request, res: Response): void => {
 /**
  * Global error handler middleware
  */
-app.use((error: Error, req: Request, res: Response, next: NextFunction): void => {
+app.use((error: Error, req: Request, res: Response): void => {
   console.error(`[${new Date().toISOString()}] Error:`, {
     message: error.message,
     stack: error.stack,

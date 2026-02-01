@@ -3,7 +3,6 @@ import compression from 'compression'
 import helmet from 'helmet'
 import * as rateLimit from 'express-rate-limit'
 import * as slowDown from 'express-slow-down'
-import { cacheMiddleware } from './cache'
 
 // Compression middleware
 export const compressionMiddleware = compression({

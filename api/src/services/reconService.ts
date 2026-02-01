@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
 import { addJob } from './jobQueue';
 import { logger } from '../utils/logger';
+import fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -167,13 +168,13 @@ class ReconService {
   private async runNaabu(hosts: string[], threads: number): Promise<Array<{ host: string, port: number, service: string, version: string }>> {
     try {
       const hostsFile = `/tmp/hosts_${Date.now()}.txt`;
-      require('fs').writeFileSync(hostsFile, hosts.join('\n'));
+      fs.writeFileSync(hostsFile, hosts.join('\n'));
 
       const command = `${this.tools.naabu} -list ${hostsFile} -t ${threads} -silent -json`;
       const { stdout } = await execAsync(command, { timeout: 600000 }); // 10 minutes
 
       // Clean up temp file
-      require('fs').unlinkSync(hostsFile);
+      fs.unlinkSync(hostsFile);
 
       const results = stdout.split('\n')
         .filter(line => line.trim())
@@ -202,13 +203,13 @@ class ReconService {
   private async runHttpx(hosts: string[], threads: number): Promise<Array<{ url: string, method: string, status: number, title: string }>> {
     try {
       const hostsFile = `/tmp/hosts_${Date.now()}.txt`;
-      require('fs').writeFileSync(hostsFile, hosts.join('\n'));
+      fs.writeFileSync(hostsFile, hosts.join('\n'));
 
       const command = `${this.tools.httpx} -list ${hostsFile} -t ${threads} -silent -json -title`;
       const { stdout } = await execAsync(command, { timeout: 600000 }); // 10 minutes
 
       // Clean up temp file
-      require('fs').unlinkSync(hostsFile);
+      fs.unlinkSync(hostsFile);
 
       const results = stdout.split('\n')
         .filter(line => line.trim())

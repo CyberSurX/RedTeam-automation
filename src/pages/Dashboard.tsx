@@ -18,9 +18,9 @@ export const Dashboard: React.FC = () => {
         const response = await axios.get('/api/stats', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (response.data.success) {
+        if ((response.data as any).success) {
           setStats({
-            ...response.data.data,
+            ...(response.data as any).data,
             loading: false
           });
         }

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { validationResult, ValidationError as ExpressValidationError } from 'express-validator'
+import { validationResult } from 'express-validator'
 import { ValidationError } from '../utils/errors'
 
 export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
@@ -25,7 +25,7 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
 
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sanitizeValue = (value: any): any => {
+    const sanitizeValue = (value: unknown): unknown => {
       if (typeof value === 'string') {
         return value
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -35,21 +35,21 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
           .replace(/vbscript:/gi, '')
           .trim()
       }
-      
+
       if (Array.isArray(value)) {
         return value.map(sanitizeValue)
       }
-      
+
       if (value && typeof value === 'object') {
-        const sanitizedObj: Record<string, any> = {}
+        const sanitizedObj: Record<string, unknown> = {}
         for (const key in value) {
           if (Object.prototype.hasOwnProperty.call(value, key)) {
-            sanitizedObj[key] = sanitizeValue(value[key])
+            sanitizedObj[key] = sanitizeValue((value as Record<string, unknown>)[key])
           }
         }
         return sanitizedObj
       }
-      
+
       return value
     }
     
@@ -71,7 +71,7 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
   }
 }
 
-export const validateRequest = (validations: any[]) => {
+export const validateRequest = (validations: unknown[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       await Promise.all(validations.map(validation => validation.run(req)))
