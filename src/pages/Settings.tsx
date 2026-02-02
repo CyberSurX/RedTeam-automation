@@ -203,7 +203,7 @@ export const Settings: React.FC = () => {
     setHasChanges(true);
   };
 
-  const handleProfileUpdate = (field: keyof UserProfile, value: any) => {
+  const handleProfileUpdate = (field: keyof UserProfile, value: string | boolean) => {
     setUserProfile({ ...userProfile, [field]: value });
     setHasChanges(true);
   };

@@ -3,9 +3,15 @@ import { app } from '../src/app'
 import { query as pool } from '../src/config/database'
 import bcrypt from 'bcrypt'
 
+interface TestUser {
+  id: string
+  username: string
+  email: string
+  password: string
+}
+
 describe('Authentication API', () => {
-  let testUser: any
-  let authToken: string
+  let testUser: TestUser | undefined
 
   beforeAll(async () => {
     await pool.query('DELETE FROM users WHERE email = $1', ['test@redteam-automation.test'])
@@ -92,7 +98,6 @@ describe('Authentication API', () => {
       const data = await response.json()
       expect(data).toHaveProperty('user')
       expect(data).toHaveProperty('token')
-      authToken = data.token
     })
 
     it('should reject login with invalid credentials', async () => {

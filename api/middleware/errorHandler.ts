@@ -29,12 +29,12 @@ export const errorHandler = (
     error = new AppError('Resource not found', 404)
   }
 
-  if (err.name === 'MongoServerError' && (err as any).code === 11000) {
+  if (err.name === 'MongoServerError' && ((err as { code?: number }).code) === 11000) {
     error = new AppError('Duplicate field value entered', 400)
   }
 
   if (err.name === 'ValidationError') {
-    const messages = Object.values((err as any).errors || {}).map((val: any) => val.message)
+    const messages = Object.values(((err as { errors?: Record<string, { message: string }> }).errors) || {}).map((val) => val.message)
     error = new AppError(messages.join(', '), 400)
   }
 
@@ -42,7 +42,7 @@ export const errorHandler = (
     error = new AppError('Database operation failed', 500)
   }
 
-  const response: any = {
+  const response: { success: boolean; message: string; statusCode: number; stack?: string } = {
     success: false,
     message: error.message,
     statusCode: error.statusCode,
@@ -77,7 +77,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       duration: `${duration}ms`,
       ip: req.ip,
       userAgent: req.get('user-agent'),
-      userId: (req as any).user?.id,
+      userId: ((req as { user?: { id: string } }).user?.id),
       timestamp: new Date().toISOString(),
     }
 

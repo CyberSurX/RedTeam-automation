@@ -31,6 +31,25 @@ interface Program {
   autoReport: boolean;
 }
 
+interface BackendProgram {
+  id: string;
+  name: string;
+  platform: string;
+  metadata?: {
+    url?: string;
+    isAutomated?: boolean;
+    autoRecon?: boolean;
+    autoScan?: boolean;
+    autoReport?: boolean;
+  };
+  status: string;
+  scopes?: {
+    in_scope?: string[];
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 interface CreateProgramModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -194,9 +213,9 @@ export const Programs: React.FC = () => {
       const response = await axios.get('/api/programs', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if ((response.data as any).success) {
+      if ((response.data as Record<string, unknown>).success) {
         // Map backend response to match frontend interface if needed
-        const mappedPrograms = (response.data as any).data.map((p: Program | any) => ({
+        const mappedPrograms = ((response.data as Record<string, unknown>).data as BackendProgram[]).map((p: BackendProgram) => ({
           id: p.id,
           name: p.name,
           platform: p.platform,
@@ -214,8 +233,8 @@ export const Programs: React.FC = () => {
         }));
         setPrograms(mappedPrograms);
       }
-    } catch (error) {
-      console.error("Failed to fetch programs", error);
+    } catch (_error) {
+      console.error("Failed to fetch programs", _error);
     } finally {
       setIsLoading(false);
     }
@@ -227,11 +246,12 @@ export const Programs: React.FC = () => {
       const response = await axios.post('/api/programs', programData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if ((response.data as any).success) {
+      const responseData = response.data as Record<string, unknown>;
+      if (responseData.success) {
         fetchPrograms(); // Refresh list
       }
-    } catch (error) {
-      console.error("Failed to create program", error);
+    } catch (_error) {
+      console.error("Failed to create program", _error);
     }
   };
 
@@ -245,13 +265,14 @@ export const Programs: React.FC = () => {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if ((response.data as any).success) {
+      const responseData = response.data as Record<string, unknown>;
+      if (responseData.success) {
         setPrograms((prev: Program[]) => prev.map((p: Program) =>
-          p.id === programId ? { ...p, status: newStatus } : p
+          p.id === programId ? { ...p, status: newStatus as 'active' | 'paused' | 'completed' } : p
         ));
       }
-    } catch (error) {
-      console.error("Failed to toggle program status", error);
+    } catch (_error) {
+      console.error("Failed to toggle program status", _error);
     }
   };
 
@@ -262,11 +283,12 @@ export const Programs: React.FC = () => {
         const response = await axios.delete(`/api/programs/${programId}`, {
            headers: { Authorization: `Bearer ${token}` }
         });
-        if ((response.data as any).success) {
+        const responseData = response.data as Record<string, unknown>;
+        if (responseData.success) {
           setPrograms((prev: Program[]) => prev.filter((p: Program) => p.id !== programId));
         }
-      } catch (error) {
-        console.error("Failed to delete program", error);
+      } catch (_error) {
+        console.error("Failed to delete program", _error);
       }
     }
   };

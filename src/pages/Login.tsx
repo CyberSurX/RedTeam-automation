@@ -28,8 +28,8 @@ export const Login: React.FC = () => {
         await register(formData.email, formData.password, formData.name);
       }
       navigate('/');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'An error occurred');
     } finally {
       setIsLoading(false);
     }

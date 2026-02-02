@@ -2,8 +2,16 @@ import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../components/ui/card";
 import axios from "axios";
 
+interface DashboardStats {
+  programs: number;
+  findings: number;
+  revenue: number;
+  criticalFindings: number;
+  loading: boolean;
+}
+
 export const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     programs: 0,
     findings: 0,
     revenue: 0,
@@ -15,17 +23,17 @@ export const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('/api/stats', {
+        const response = await axios.get<{ success: boolean; data: Omit<DashboardStats, 'loading'> }>('/api/stats', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if ((response.data as any).success) {
+        if (response.data.success) {
           setStats({
-            ...(response.data as any).data,
+            ...response.data.data,
             loading: false
           });
         }
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats", error);
+      } catch (_error) {
+        console.error("Failed to fetch dashboard stats", _error);
         setStats(prev => ({ ...prev, loading: false }));
       }
     };

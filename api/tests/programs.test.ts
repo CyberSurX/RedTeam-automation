@@ -3,10 +3,14 @@ import { app } from '../src/app'
 import { query as pool } from '../src/config/database'
 import { createTestUser, getAuthToken, createTestProgram } from './helpers'
 
+interface TestEntity {
+  id: string
+  [key: string]: unknown
+}
+
 describe('Programs API', () => {
-  let testUser: any
-  let authToken: string
-  let testProgram: any
+  let testUser: TestEntity | undefined
+  let testProgram: TestEntity | undefined
 
   beforeAll(async () => {
     testUser = await createTestUser()

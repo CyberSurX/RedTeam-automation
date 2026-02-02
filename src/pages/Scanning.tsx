@@ -53,7 +53,7 @@ interface ScanProfile {
   type: 'port' | 'web' | 'vulnerability' | 'full';
   description: string;
   tools: string[];
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
 }
 
 export const Scanning: React.FC = () => {
@@ -116,8 +116,8 @@ export const Scanning: React.FC = () => {
       if (response.data) {
         setJobs(response.data as ScanJob[]);
       }
-    } catch (error) {
-      console.error('Failed to fetch scan jobs:', error);
+    } catch (_error) {
+      console.error('Failed to fetch scan jobs:', _error);
     }
   };
 
@@ -146,9 +146,10 @@ export const Scanning: React.FC = () => {
         console.log('Scan started:', response.data);
         fetchScanJobs();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to start scan:', error);
-      alert(`Failed to start scan: ${error.response?.data?.error || 'Unknown error'}`);
+      const errorMsg = ((error as { response?: { data?: { error?: string } } })?.response?.data?.error) || 'Unknown error';
+      alert(`Failed to start scan: ${errorMsg}`);
     }
 
     setIsNewScanOpen(false);
@@ -171,11 +172,12 @@ export const Scanning: React.FC = () => {
         const response = await axios.post(`/api/scan/abort/${jobId}`, {}, {
            headers: { Authorization: `Bearer ${token}` }
         });
-        if ((response.data as any).status === 'aborted' || (response.data as any).success) {
+        const responseData = response.data as { status?: string; success?: boolean };
+        if (responseData.status === 'aborted' || responseData.success) {
           fetchScanJobs();
         }
-      } catch (error) {
-        console.error('Failed to stop job:', error);
+      } catch (_error) {
+        console.error('Failed to stop job:', _error);
       }
     }
   };
@@ -212,9 +214,9 @@ export const Scanning: React.FC = () => {
     }
   };
 
-  const filteredResults = (results: any[]) => {
+  const filteredResults = (results: ScanJob['results']) => {
     if (filterSeverity === 'all') return results;
-    return results.filter(result => result.severity === filterSeverity);
+    return results.filter((result) => result.severity === filterSeverity);
   };
 
   return (

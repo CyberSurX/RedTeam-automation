@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -31,7 +32,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,9 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserProfile = async () => {
     try {
       setError(null);
-      const response = await axios.get('/api/auth/profile');
-      setUser((response.data as any) as User);
-    } catch (error) {
+      const response = await axios.get<User>('/api/auth/profile');
+      setUser(response.data);
+    } catch {
       // Token might be invalid
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
@@ -63,14 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setError(null);
-      const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user: userData } = (response.data as any);
+      const response = await axios.post<{ token: string; user: User }>('/api/auth/login', { email, password });
+      const { token, user: userData } = response.data;
 
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
+    } catch (error: unknown) {
+      const errorMessage = ((error as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Login failed';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -79,14 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, name: string) => {
     try {
       setError(null);
-      const response = await axios.post('/api/auth/register', { email, password, name });
-      const { token, user: userData } = (response.data as any);
+      const response = await axios.post<{ token: string; user: User }>('/api/auth/register', { email, password, name });
+      const { token, user: userData } = response.data;
 
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Registration failed';
+    } catch (error: unknown) {
+      const errorMessage = ((error as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Registration failed';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
