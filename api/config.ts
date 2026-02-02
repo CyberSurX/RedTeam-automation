@@ -3,6 +3,14 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
 export const config = {
+  // Server Settings
+  port: parseInt(process.env.PORT || '3000'),
+  nodeEnv: process.env.NODE_ENV || 'development',
+  corsOptions: {
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true
+  },
+
   // Safety Settings
   safeMode: process.env.SAFE_MODE === 'true',
   dryRun: process.env.DRY_RUN === 'true',

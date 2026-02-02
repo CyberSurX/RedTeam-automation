@@ -7,4 +7,4 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   res.json({ users: [] })
 })
 
-export default router
+export const usersRouter = router

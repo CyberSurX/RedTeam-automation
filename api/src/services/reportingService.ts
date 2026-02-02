@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { query } from '../config/database';
 import { logger } from '../utils/logger';

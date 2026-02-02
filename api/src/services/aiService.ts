@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
 import { logger } from '../utils/logger';

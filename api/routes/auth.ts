@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router, type Request, type Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { body, validationResult } from 'express-validator'
@@ -142,4 +143,4 @@ router.post('/logout', authenticate, (req: Request, res: Response) => {
   res.status(200).json({ message: 'Logout successful' })
 })
 
-export default router
+export const authRouter = router

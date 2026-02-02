@@ -28,3 +28,12 @@ export const initializeDatabase = async () => {
         process.exit(1)
     }
 }
+
+// Helper function for raw SQL queries
+export const query = async (sql: string, params?: any[]): Promise<{rows: any[], rowCount: number}> => {
+    const result = await AppDataSource.query(sql, params)
+    return {
+        rows: result,
+        rowCount: result.length
+    }
+}

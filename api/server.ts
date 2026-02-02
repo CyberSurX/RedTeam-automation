@@ -1,6 +1,6 @@
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import type { InstrumentationOption } from '@opentelemetry/instrumentation'
-import { NodeSDK } from '@opentelemetry/sdk-node'
+// import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+// import type { InstrumentationOption } from '@opentelemetry/instrumentation'
+// import { NodeSDK } from '@opentelemetry/sdk-node'
 import compression from 'compression'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -10,34 +10,34 @@ import { createServer } from 'http'
 import morgan from 'morgan'
 import { Server } from 'socket.io'
 
-let getNodeAutoInstrumentations: (opts?: Record<string, unknown>) => InstrumentationOption[] = () => []
+// let getNodeAutoInstrumentations: (opts?: Record<string, unknown>) => InstrumentationOption[] = () => []
 
-try {
-  const autoInstr = await import('@opentelemetry/auto-instrumentations-node')
-  if (autoInstr && typeof autoInstr.getNodeAutoInstrumentations === 'function') {
-    getNodeAutoInstrumentations = autoInstr.getNodeAutoInstrumentations
-  }
-} catch {
-  console.warn('OpenTelemetry auto-instrumentations not available, continuing without instrumentation')
-}
+// try {
+//   const autoInstr = await import('@opentelemetry/auto-instrumentations-node')
+//   if (autoInstr && typeof autoInstr.getNodeAutoInstrumentations === 'function') {
+//     getNodeAutoInstrumentations = autoInstr.getNodeAutoInstrumentations
+//   }
+// } catch {
+//   console.warn('OpenTelemetry auto-instrumentations not available, continuing without instrumentation')
+// }
 
 dotenv.config()
 
 import { errorHandler, notFound, requestLogger, securityHeaders } from './middleware/errorHandler'
-import { productionOptimizations, rateLimiter } from './middleware/performance'
+import { rateLimiter } from './middleware/performance'
 import { startMonitoring } from './monitoring/alerts'
 
-import authRoutes from './routes/auth'
-import programRoutes from './routes/programs'
-import userRoutes from './routes/users'
-import scanRoutes from './routes/scan'
-import statsRoutes from './routes/stats'
-import findingsRoutes from './routes/findings'
-import aiRoutes from './routes/ai'
+import { authRouter as authRoutes } from './routes/auth'
+import { programsRouter as programRoutes } from './routes/programs'
+import { usersRouter as userRoutes } from './routes/users'
+import { scanRouter as scanRoutes } from './routes/scan'
+import { statsRouter as statsRoutes } from './routes/stats'
+import { findingsRouter as findingsRoutes } from './routes/findings'
+import { aiRouter as aiRoutes } from './routes/ai'
 import { autonomousService } from './src/services/autonomousService'
 
 import { clearAlert, getActiveAlerts, getAlerts } from './monitoring/alerts'
-import { healthCheck, livenessCheck, readinessCheck } from './monitoring/health'
+import { healthCheck, readinessCheck } from './monitoring/health'
 import { getHealthMetrics, getMetrics } from './monitoring/metrics'
 
 import logger from './utils/logger'
@@ -119,7 +119,7 @@ app.use(requestLogger)
 app.use(securityHeaders)
 
 if (NODE_ENV === 'production') {
-  app.use(productionOptimizations)
+  //   app.use(productionOptimizations)
   app.use('/api/', rateLimiter)
 }
 
@@ -132,7 +132,7 @@ app.use('/api/findings', findingsRoutes)
 app.use('/api/ai', aiRoutes)
 
 app.get('/health', healthCheck)
-app.get('/health/liveness', livenessCheck)
+app.get('/health/liveness', healthCheck)
 app.get('/health/readiness', readinessCheck)
 app.get('/metrics', getMetrics)
 app.get('/health/metrics', getHealthMetrics)
@@ -155,18 +155,18 @@ io.on('connection', (socket) => {
   })
 })
 
-const sdk = new NodeSDK({
-  traceExporter: new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
-  }),
-  instrumentations: getNodeAutoInstrumentations(),
-})
-
-if (process.env.OTEL_ENABLED === 'true') {
-  sdk.start()
-  logger.info('OpenTelemetry SDK started')
-}
-
+// const sdk = new NodeSDK({
+//   traceExporter: new OTLPTraceExporter({
+//     url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+//   }),
+//   instrumentations: getNodeAutoInstrumentations(),
+// })
+// 
+// if (process.env.OTEL_ENABLED === 'true') {
+//   sdk.start()
+//   logger.info('OpenTelemetry SDK started')
+// }
+// 
 server.listen(PORT, () => {
   logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`)
   

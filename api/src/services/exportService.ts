@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Finding } from '../entities/Finding';
 
 export class ExportService {

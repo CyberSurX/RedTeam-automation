@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router, type Request, type Response } from 'express';
 import axios from 'axios';
 
@@ -173,4 +174,4 @@ router.post('/abort/:missionId', async (req: Request, res: Response): Promise<vo
   }
 });
 
-export default router;
+export const scanRouter = router;

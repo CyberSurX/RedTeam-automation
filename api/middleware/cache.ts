@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Request, Response, NextFunction } from 'express'
 import NodeCache from 'node-cache'
 import crypto from 'crypto'

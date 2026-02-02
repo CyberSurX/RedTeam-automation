@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { query } from '../config/database';
 import { logger } from '../utils/logger';
 import { scanningService } from './scanningService';

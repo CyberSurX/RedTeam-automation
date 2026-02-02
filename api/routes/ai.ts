@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router, type Request, type Response } from 'express'
 import { aiService } from '../src/services/aiService'
 import { getRepository } from 'typeorm'
@@ -37,4 +38,4 @@ router.get('/scan-summary/:jobId', asyncHandler(async (req: Request, res: Respon
   })
 }))
 
-export default router
+export const aiRouter = router

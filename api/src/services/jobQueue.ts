@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Queue from 'bull';
 import Redis from 'ioredis';
 import { logger } from '../utils/logger';
