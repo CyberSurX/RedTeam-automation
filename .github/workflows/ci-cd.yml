@@ -259,19 +259,21 @@ jobs:
               console.log('Release notes generated for:', latestRelease.tag_name);
             }
 
-  # Notification
-  notify:
-    name: Send Notifications
-    runs-on: ubuntu-latest
-    needs: [deploy-production, deploy-staging]
-    if: always()
-    
-    steps:
-      - name: Notify deployment status
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          channel: '#deployments'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+  # Notification - DISABLED
+  # Slack notifications disabled - will enable when product is ready for launch
+  # To enable: configure SLACK_WEBHOOK secret and uncomment this job
+  # notify:
+  #   name: Send Notifications
+  #   runs-on: ubuntu-latest
+  #   needs: [deploy-production, deploy-staging]
+  #   if: always()
+  #
+  #   steps:
+  #     - name: Notify deployment status
+  #       uses: 8398a7/action-slack@v3
+  #       with:
+  #         status: ${{ job.status }}
+  #         channel: '#deployments'
+  #         webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
