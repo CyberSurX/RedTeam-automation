@@ -230,7 +230,7 @@ export const Programs: React.FC = () => {
           autoRecon: p.metadata?.autoRecon || false,
           autoScan: p.metadata?.autoScan || false,
           autoReport: p.metadata?.autoReport || false
-        }));
+        })) as Program[];
         setPrograms(mappedPrograms);
       }
     } catch (_error) {
