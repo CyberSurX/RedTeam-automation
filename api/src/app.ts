@@ -15,9 +15,9 @@ import { rateLimiter, productionOptimizations } from '../middleware/performance'
 import { startMonitoring } from '../monitoring/alerts';
 
 // Import routes
-import authRoutes from './routes/auth';
-import programRoutes from './routes/programs';
-import userRoutes from './routes/users';
+import authRoutes from '../routes/auth';
+import programRoutes from '../routes/programs';
+import userRoutes from '../routes/users';
 
 // Import monitoring endpoints
 import { healthCheck, readinessCheck, livenessCheck } from '../monitoring/health';
