@@ -1,0 +1,9 @@
+{
+  "watch": ["."],
+  "ext": "ts,json",
+  "ignore": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"],
+  "exec": "ts-node --project ./tsconfig.json server.ts",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "commonjs",
     "moduleResolution": "node",
     "rootDir": ".",
     "outDir": "../dist/api",
@@ -13,7 +13,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "types": ["node"]
   },
   "include": [
     "./server.ts",

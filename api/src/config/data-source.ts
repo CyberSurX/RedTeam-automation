@@ -1,9 +1,9 @@
 import "reflect-metadata"
 import { DataSource } from "typeorm"
-import { User } from "../entities/User"
-import { Program } from "../entities/Program"
-import { Finding } from "../entities/Finding"
-import { Report } from "../entities/Report"
+import { User } from '../entities/User'
+import { Program } from '../entities/Program'
+import { Finding } from '../entities/Finding'
+import { Report } from '../entities/Report'
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -24,7 +24,7 @@ export const initializeDatabase = async () => {
         await AppDataSource.initialize()
         console.log("✅ Data Source has been initialized!")
     } catch (err) {
-        console.error("❌ Error during Data Source initialization", err)
-        process.exit(1)
+        const message = (err as Error)?.message || String(err)
+        console.warn("⚠️  Database not available - continuing without database. Some features will be limited:", message)
     }
 }

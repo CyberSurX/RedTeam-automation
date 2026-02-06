@@ -21,7 +21,7 @@ import { Server } from 'socket.io'
 //   console.warn('OpenTelemetry auto-instrumentations not available, continuing without instrumentation')
 // }
 
-dotenv.config()
+dotenv.config({ path: '../.env' })
 
 import { errorHandler, notFound, requestLogger, securityHeaders } from './middleware/errorHandler'
 import { rateLimiter } from './middleware/performance'
@@ -169,13 +169,26 @@ io.on('connection', (socket) => {
 // 
 server.listen(PORT, () => {
   logger.info(`Server running in ${NODE_ENV} mode on port ${PORT}`)
-  
+
   if (NODE_ENV === 'production') {
     startMonitoring()
   }
-  
-  // Start the autonomous orchestrator
-  autonomousService.start()
+  // Initialize optional autonomous orchestrator (Ralph mode)
+  // Usage: node dist/api/server.js --mode ralph
+  // The service will start only when the flag `--mode ralph` is present.
+  const args = process.argv.slice(2)
+  const modeIndex = args.findIndex(arg => arg === '--mode')
+  const isRalphMode = modeIndex !== -1 && args[modeIndex + 1] && args[modeIndex + 1].toLowerCase() === 'ralph'
+
+  if (isRalphMode) {
+    try {
+      autonomousService.start()
+    } catch (error) {
+      logger.warn('Autonomous service failed to start (database may be unavailable):', error)
+    }
+  } else {
+    logger.info('Ralph mode not enabled; autonomous orchestrator will remain idle')
+  }
 })
 
 server.on('error', (error: Error) => {

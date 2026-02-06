@@ -73,10 +73,10 @@ export class Report {
   @Column({ type: 'timestamp', nullable: true })
   approved_at!: Date
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   created_at!: Date
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updated_at!: Date
 
   @ManyToOne(() => User, user => user.reports)

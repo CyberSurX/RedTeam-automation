@@ -6,16 +6,24 @@ import si from 'systeminformation';
 import { createClient } from 'redis';
 import { Pool } from 'pg';
 
-const redisClient = createClient();
-redisClient.on('error', (err) => console.error('Redis Client Error', err));
-await redisClient.connect();
+let redisClient: ReturnType<typeof createClient> | null = null;
+
+const getRedisClient = async () => {
+  if (!redisClient) {
+    redisClient = createClient();
+    redisClient.on('error', (err) => console.error('Redis Client Error', err));
+    await redisClient.connect();
+  }
+  return redisClient;
+};
 
 const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432'),
+  user: process.env.DATABASE_USER || process.env.DB_USER,
+  host: process.env.DATABASE_HOST || process.env.DB_HOST,
+  database: process.env.DATABASE_NAME || process.env.DB_NAME,
+  password: process.env.DATABASE_PASSWORD || process.env.DB_PASSWORD,
+  port: parseInt(process.env.DATABASE_PORT || process.env.DB_PORT || '5432'),
+  connectionTimeoutMillis: 3000,
 });
 
 interface SystemMetrics {
@@ -81,21 +89,44 @@ export const getSystemMetrics = async (): Promise<SystemMetrics> => {
   };
 };
 
-const checkDatabaseConnection = async (): Promise<'healthy' | 'unhealthy'> => {
+const checkDatabaseConnection = async (): Promise<'healthy' | 'unhealthy' | 'unavailable'> => {
   try {
-    const client = await pool.connect();
-    client.release();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout')), 2000);
+    });
+    await Promise.race([
+      (async () => {
+        const client = await pool.connect();
+        client.release();
+      })(),
+      timeoutPromise,
+    ]);
     return 'healthy';
-  } catch {
+  } catch (e: any) {
+    if (e.message === 'Connection timeout' || e?.code === 'ECONNREFUSED' || e?.code === 'ENOTFOUND') {
+      return 'unavailable';
+    }
     return 'unhealthy';
   }
 };
 
-const checkRedisConnection = async (): Promise<'healthy' | 'unhealthy'> => {
+const checkRedisConnection = async (): Promise<'healthy' | 'unhealthy' | 'unavailable'> => {
   try {
-    await redisClient.ping();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout')), 2000);
+    });
+    await Promise.race([
+      (async () => {
+        const client = await getRedisClient();
+        await client.ping();
+      })(),
+      timeoutPromise,
+    ]);
     return 'healthy';
-  } catch {
+  } catch (e: any) {
+    if (e.message === 'Connection timeout' || e?.code === 'ECONNREFUSED' || e?.code === 'ENOTFOUND') {
+      return 'unavailable';
+    }
     return 'unhealthy';
   }
 };
@@ -150,7 +181,7 @@ export const readinessCheck = async (req: Request, res: Response) => {
         redis: redisStatus,
       },
     });
-  } catch (e) {
+  } catch (e: any) {
     res.status(503).json({ status: 'not ready', error: e.message });
   }
 };

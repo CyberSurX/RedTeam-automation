@@ -1,13 +1,15 @@
 {
-  "name": "redteam-automation-platform",
+  "name": "cybersurhub-bugbounty-platform",
   "private": true,
   "version": "1.0.0",
-  "author": "Thundernight1 <243298104+Thundernight1@users.noreply.github.com> (https://github.com/Thundernight1)",
+  "description": "Automated Red Team & Bug Bounty Orchestration Engine.",
+  "author": "Thundernight1",
+  "license": "Proprietary",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",
-    "dev:backend": "nodemon api/server.ts",
+    "dev:backend": "nodemon --config api/nodemon.json",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "tsc -b && vite build",
     "build:backend": "tsc -p api/tsconfig.json",
@@ -23,8 +25,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "node scripts/security-test.js",
     "db:migrate": "echo 'Using TypeORM for migrations'",
-    "db:seed": "echo 'Using TypeORM for seeding'"
+    "db:seed": "echo 'Using TypeORM for seeding'",
   },
+  "postinstall": "npm run build",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.210.0",
