@@ -13,10 +13,22 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
+
+      - name: Validate manifests and lockfile
+        run: |
+          node -e "JSON.parse(require('node:fs').readFileSync('package.json','utf8'))"
+          node -e "JSON.parse(require('node:fs').readFileSync('package-lock.json','utf8'))"
+          if [ -f api/package.json ]; then
+            node -e "JSON.parse(require('node:fs').readFileSync('api/package.json','utf8'))"
+          fi
+          if [ -f api/package-lock.json ]; then
+            node -e "JSON.parse(require('node:fs').readFileSync('api/package-lock.json','utf8'))"
+          fi
+          npm ci --ignore-scripts --dry-run
           
       - name: Install Dependencies
         run: npm ci
