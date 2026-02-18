@@ -25,7 +25,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "node scripts/security-test.js",
     "db:migrate": "echo 'Using TypeORM for migrations'",
-    "db:seed": "echo 'Using TypeORM for seeding'",
+    "db:seed": "echo 'Using TypeORM for seeding'"
   },
   "postinstall": "npm run build",
   "dependencies": {
