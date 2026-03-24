@@ -1,8 +1,8 @@
 {
-  "watch": ["."],
+  "watch": ["api/", "package.json"],
   "ext": "ts,json",
   "ignore": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"],
-  "exec": "tsx start.ts",
+  "exec": "tsx api/start.ts",
   "env": {
     "NODE_ENV": "development"
   }
