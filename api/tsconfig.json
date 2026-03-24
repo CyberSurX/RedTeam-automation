@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "rootDir": ".",
+    "outDir": "../dist/api",
+    "strict": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "strictPropertyInitialization": false,
+    "types": ["node"]
+  },
+  "include": [
+    "./start.ts",
+    "./server.ts",
+    "./index.ts",
+    "./src/middleware/**/*.ts",
+    "./monitoring/**/*.ts",
+    "./routes/**/*.ts",
+    "./utils/**/*.ts",
+    "./types/**/*.ts",
+    "./src/config/**/*.ts",
+    "./src/entities/**/*.ts",
+    "./src/services/**/*.ts",
+    "./src/controllers/**/*.ts"
+  ],
+  "exclude": [
+    "../node_modules",
+    "tests",
+    "tests/**",
+    "./tests",
+    "./tests/**",
+    "tests_disabled",
+    "tests_disabled/**",
+    "./tests_disabled",
+    "./tests_disabled/**",
+    "./app.ts"
+  ]
+}
