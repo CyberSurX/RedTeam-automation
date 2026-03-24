@@ -2,7 +2,7 @@
   "watch": ["api/", "package.json"],
   "ext": "ts,json",
   "ignore": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"],
-  "exec": "tsx api/start.ts",
+  "exec": "tsc -p api/tsconfig.json && node dist/api/start.js",
   "env": {
     "NODE_ENV": "development"
   }
