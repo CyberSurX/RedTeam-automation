@@ -13,26 +13,22 @@ import json
 import yaml
 import hashlib
 import logging
-import asyncio
 import signal
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional, Callable
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import threading
-import queue
 import time
 
 # Third-party imports (validated in requirements.txt)
 import redis
-import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 import pika
-import requests
 
 # Configure enterprise logging
 LOG_FORMAT = '%(asctime)s | %(levelname)-8s | %(name)-20s | %(funcName)-25s | %(message)s'
@@ -44,7 +40,7 @@ logging.basicConfig(
     datefmt=LOG_DATE_FORMAT,
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/app/logs/orchestrator.log', mode='a')
+        logging.FileHandler('orchestrator.log', mode='a')
     ]
 )
 logger = logging.getLogger('CyberSurhub.Orchestrator')
@@ -67,10 +63,7 @@ class AgentType(Enum):
     """Classification of agent types in the framework."""
     RED_TEAM_WEB = "red_team_web_scanner"
     RED_TEAM_NETWORK = "red_team_network_scanner"
-    RED_TEAM_VULN = "red_team_vulnerability_scanner"
     BLUE_TEAM_VALIDATOR = "blue_team_validator"
-    BLUE_TEAM_COMPLIANCE = "blue_team_compliance"
-    REPORT_ENGINE = "report_engine"
 
 
 class SeverityLevel(Enum):
@@ -95,21 +88,6 @@ class ScopeAgreement:
     sha256_hash: str
     validated: bool = False
     validation_timestamp: Optional[datetime] = None
-
-    def to_dict(self) -> Dict:
-        return {
-            'agreement_id': self.agreement_id,
-            'client_name': self.client_name,
-            'targets': self.targets,
-            'excluded_targets': self.excluded_targets,
-            'start_time': self.start_time.isoformat(),
-            'end_time': self.end_time.isoformat(),
-            'authorized_tests': self.authorized_tests,
-            'sha256_hash': self.sha256_hash,
-            'validated': self.validated,
-            'validation_timestamp': self.validation_timestamp.isoformat() if self.validation_timestamp else None
-        }
-
 
 @dataclass
 class MissionConfig:
@@ -413,14 +391,6 @@ class RedisCache:
             logger.error(f"Failed to get mission status: {e}")
             return None
     
-    def increment_scan_counter(self, mission_id: str) -> int:
-        """Increment and return scan counter for a mission."""
-        try:
-            return self.client.incr(f"mission:{mission_id}:scan_count")
-        except Exception as e:
-            logger.error(f"Failed to increment scan counter: {e}")
-            return -1
-    
     def add_finding(self, mission_id: str, finding: Dict) -> bool:
         """Add a finding to the mission's findings list."""
         try:
@@ -579,21 +549,6 @@ class TaskDispatcher:
         }
         return self.dispatch_task(AgentType.RED_TEAM_NETWORK, target, mission_id, config)
     
-    def dispatch_validation(self, findings: List[Dict], mission_id: str) -> str:
-        """Dispatch validation task to Blue Team."""
-        config = {
-            'findings': findings,
-            'validation_depth': 'thorough',
-            'false_positive_check': True
-        }
-        return self.dispatch_task(AgentType.BLUE_TEAM_VALIDATOR, 
-                                  f"validation_{mission_id}", mission_id, config)
-    
-    def get_task_status(self, task_id: str) -> Optional[Dict]:
-        """Get status of a dispatched task."""
-        with self._lock:
-            return self.active_tasks.get(task_id)
-    
     def shutdown(self):
         """Shutdown the dispatcher executor."""
         self.executor.shutdown(wait=True)
@@ -649,45 +604,6 @@ class ResultAggregator:
         except Exception as e:
             logger.error(f"Failed to process result: {e}")
             return False
-    
-    def get_mission_summary(self, mission_id: str) -> Dict:
-        """Generate summary of mission findings."""
-        findings = self.cache.get_findings(mission_id)
-        
-        summary = {
-            'mission_id': mission_id,
-            'total_findings': len(findings),
-            'by_severity': {
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0,
-                'info': 0
-            },
-            'by_category': {},
-            'risk_score': 0.0,
-            'generated_at': datetime.now(timezone.utc).isoformat()
-        }
-        
-        total_risk = 0.0
-        for finding in findings:
-            severity = finding.get('severity', 'info').lower()
-            if severity in summary['by_severity']:
-                summary['by_severity'][severity] += 1
-            
-            category = finding.get('category', 'uncategorized')
-            summary['by_category'][category] = summary['by_category'].get(category, 0) + 1
-            
-            # Calculate risk score
-            severity_weights = {'critical': 10, 'high': 7, 'medium': 4, 'low': 2, 'info': 0.5}
-            total_risk += severity_weights.get(severity, 1)
-        
-        # Normalize risk score to 0-100
-        if findings:
-            summary['risk_score'] = min(100, (total_risk / len(findings)) * 10)
-        
-        return summary
-
 
 class OrchestratorCore:
     """
@@ -732,21 +648,21 @@ class OrchestratorCore:
         """Return default configuration."""
         return {
             'database': {
-                'host': os.getenv('DB_HOST', 'postgres'),
+                'host': os.getenv('DB_HOST', 'localhost'),
                 'port': int(os.getenv('DB_PORT', 5432)),
                 'database': os.getenv('DB_NAME', 'cybersurhub'),
                 'user': os.getenv('DB_USER', 'cybersurhub'),
                 'password': os.getenv('DB_PASSWORD', 'secure_password')
             },
             'broker': {
-                'host': os.getenv('RABBITMQ_HOST', 'rabbitmq'),
+                'host': os.getenv('RABBITMQ_HOST', 'localhost'),
                 'port': int(os.getenv('RABBITMQ_PORT', 5672)),
                 'user': os.getenv('RABBITMQ_USER', 'cybersurhub'),
                 'password': os.getenv('RABBITMQ_PASSWORD', 'secure_password'),
                 'vhost': os.getenv('RABBITMQ_VHOST', '/')
             },
             'redis': {
-                'host': os.getenv('REDIS_HOST', 'redis'),
+                'host': os.getenv('REDIS_HOST', 'localhost'),
                 'port': int(os.getenv('REDIS_PORT', 6379)),
                 'db': int(os.getenv('REDIS_DB', 0)),
                 'password': os.getenv('REDIS_PASSWORD')
@@ -970,7 +886,7 @@ class OrchestratorCore:
 def main():
     """Main entry point."""
     # Ensure log directory exists
-    log_dir = Path('/var/log/cybersurhub')
+    log_dir = Path('logs/cybersurhub')
     log_dir.mkdir(parents=True, exist_ok=True)
     
     orchestrator = OrchestratorCore()

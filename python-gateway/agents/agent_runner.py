@@ -15,7 +15,7 @@ import threading
 import traceback
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Optional
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -24,7 +24,6 @@ import time
 import pika
 import redis
 import psycopg2
-from psycopg2.extras import RealDictCursor
 
 # Configure logging
 logging.basicConfig(

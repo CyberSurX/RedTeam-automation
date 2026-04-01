@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import ipaddress
 import uuid
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
 # Configure logging
 LOG_FORMAT = '%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s'
