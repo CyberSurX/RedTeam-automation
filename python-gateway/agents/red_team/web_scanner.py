@@ -151,7 +151,7 @@ class WebScanner:
         self.max_retries = max_retries
         self.rate_limit = rate_limit
         self.session = self._create_session()
-        self.results = {
+        self.results: Dict = {
             'scan_id': str(uuid.uuid4()),
             'scan_timestamp': datetime.now(timezone.utc).isoformat(),
             'target_url': None,
@@ -303,12 +303,12 @@ class WebScanner:
                 time.sleep(self.rate_limit)
                 
                 test_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-                test_params = {**params, param_name: [payload]}
+                test_params_dict = {**params, param_name: [payload]}
                 
                 try:
                     response = self.session.get(
                         test_url,
-                        params={k: v[0] for k, v in test_params.items()},
+                        params={k: str(v[0]) for k, v in test_params_dict.items()},
                         timeout=self.timeout
                     )
                     
@@ -349,7 +349,7 @@ class WebScanner:
         post_params = ['username', 'password', 'email', 'message', 'content', 'data', 'search']
         
         for param in post_params:
-            # Use subset of payloads for POST to save time
+            # Use a subset of payloads for POST to save time
             for payload in self.XSS_PAYLOADS[:3]:
                 time.sleep(self.rate_limit)
                 try:
@@ -425,7 +425,7 @@ class WebScanner:
     
     def analyze_ssl_configuration(self, url: str) -> Dict:
         """Analyze SSL/TLS configuration of the target."""
-        ssl_analysis = {
+        ssl_analysis: Dict = {
             'ssl_enabled': False,
             'certificate_valid': False,
             'protocol_version': None,
@@ -461,8 +461,8 @@ class WebScanner:
                     cert = ssock.getpeercert()
                     if cert:
                         ssl_analysis['certificate_info'] = {
-                            'subject': dict(x[0] for x in cert.get('subject', [])),
-                            'issuer': dict(x[0] for x in cert.get('issuer', [])),
+                            'subject': dict(x[0] for x in cert.get('subject', []) if x and isinstance(x[0], tuple)),
+                            'issuer': dict(x[0] for x in cert.get('issuer', []) if x and isinstance(x[0], tuple)),
                             'not_before': cert.get('notBefore'),
                             'not_after': cert.get('notAfter')
                         }
@@ -496,18 +496,21 @@ class WebScanner:
         score = 0.0
         
         # Scored similarly to existing version
-        for header in self.results['headers_analysis']:
-            if not header.present:
+        headers_analysis = self.results.get('headers_analysis', [])
+        for header in headers_analysis:
+            if not getattr(header, 'present', True):
                 severity_weights = {'critical': 15, 'high': 10, 'medium': 5, 'low': 2}
-                score += severity_weights.get(header.severity, 1)
+                score += severity_weights.get(getattr(header, 'severity', 'low'), 1)
         
-        for vuln in self.results['vulnerabilities']:
+        vulnerabilities = self.results.get('vulnerabilities', [])
+        for vuln in vulnerabilities:
             severity_weights = {'critical': 25, 'high': 15, 'medium': 8, 'low': 3}
-            score += severity_weights.get(vuln.severity, 1)
+            score += severity_weights.get(getattr(vuln, 'severity', 'low'), 1)
             
-        for disclosure in self.results['info_disclosures']:
+        info_disclosures = self.results.get('info_disclosures', [])
+        for disclosure in info_disclosures:
             severity_weights = {'critical': 20, 'high': 12, 'medium': 6, 'low': 2}
-            score += severity_weights.get(disclosure.severity, 1)
+            score += severity_weights.get(getattr(disclosure, 'severity', 'low'), 1)
         
         ssl_issues = self.results.get('ssl_analysis', {}).get('issues', [])
         for issue in ssl_issues:
@@ -535,7 +538,10 @@ class WebScanner:
             self.results['headers_analysis'] = self.check_security_headers(url)
             
             # Test for XSS vulnerabilities (GET & POST)
-            self.results['vulnerabilities'].extend(self.test_xss_vulnerabilities(url))
+            xss_vulns = self.test_xss_vulnerabilities(url)
+            if 'vulnerabilities' not in self.results:
+                self.results['vulnerabilities'] = []
+            self.results['vulnerabilities'].extend(xss_vulns)
             
             # Check for information disclosure
             self.results['info_disclosures'] = self.check_info_disclosure(url)
@@ -577,10 +583,13 @@ class WebScanner:
         report.append(f"Score: {self.results.get('risk_score')}")
         report.append("-" * 70)
         
-        if self.results['vulnerabilities']:
-            report.append(f"VULNERABILITIES ({len(self.results['vulnerabilities'])})")
-            for v in self.results['vulnerabilities']:
-                report.append(f"- [{v.severity.upper()}] {v.title}")
+        vulnerabilities = self.results.get('vulnerabilities', [])
+        if vulnerabilities:
+            report.append(f"VULNERABILITIES ({len(vulnerabilities)})")
+            for v in vulnerabilities:
+                severity = getattr(v, 'severity', 'low').upper()
+                title = getattr(v, 'title', 'Unknown')
+                report.append(f"- [{severity}] {title}")
         else:
             report.append("No vulnerabilities found.")
             

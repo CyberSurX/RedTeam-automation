@@ -392,7 +392,7 @@ class FindingValidator:
     
     def validate_finding(self, finding: Dict) -> ValidationResult:
         """Validate a single finding."""
-        finding_type = finding.get('finding_type', 'unknown')
+        finding_type = finding.get('finding_type', 'unknown') if isinstance(finding, dict) else getattr(finding, 'finding_type', 'unknown')
         
         # Select validation method based on finding type
         validators = {
@@ -707,7 +707,8 @@ class BlueTeamValidator:
         logger.info(f"Validating {len(findings)} findings from scan results")
         
         validated_count = 0
-        for finding in findings:
+        findings_list = list(findings) if isinstance(findings, (list, tuple)) else list(findings.values()) if isinstance(findings, dict) else findings
+        for finding in findings_list:
             validation = self.validator.validate_finding(finding)
             
             if validation.is_valid:
@@ -745,7 +746,8 @@ class BlueTeamValidator:
         validated_count = 0
         false_positives = 0
         
-        for finding in findings:
+        findings_list = list(findings) if isinstance(findings, (list, tuple)) else list(findings.values()) if isinstance(findings, dict) else findings
+        for finding in findings_list:
             validation = self.validator.validate_finding(finding)
             
             # Update finding in database
@@ -798,7 +800,7 @@ class BlueTeamValidator:
             total = counts['compliant'] + counts['non_compliant'] + counts['needs_review']
             compliance_rate = (counts['compliant'] / total * 100) if total > 0 else 0
             
-            report['frameworks'][framework] = {
+            report['frameworks'][framework] = { # type: ignore
                 'compliant': counts['compliant'],
                 'non_compliant': counts['non_compliant'],
                 'needs_review': counts['needs_review'],

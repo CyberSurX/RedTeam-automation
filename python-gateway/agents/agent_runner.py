@@ -15,7 +15,7 @@ import threading
 import traceback
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Any, Type
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -400,8 +400,11 @@ class BaseAgent(ABC):
             )
             
             self._connection = pika.BlockingConnection(parameters)
-            self._channel = self._connection.channel()
+            self._channel = self._connection.channel() # type: ignore
             
+            if not self._channel:
+                return False
+                
             # Declare exchange
             self._channel.exchange_declare(
                 exchange=AgentConfig.EXCHANGE_NAME,
@@ -444,6 +447,8 @@ class BaseAgent(ABC):
     
     def _publish_result(self, result: TaskResult) -> bool:
         """Publish task result to result queue."""
+        if not self._channel:
+            return False
         try:
             self._channel.basic_publish(
                 exchange='',
@@ -482,9 +487,14 @@ class BaseAgent(ABC):
         task = None
         start_time = time.time()
         
+        if isinstance(body, (bytes, bytearray)):
+            body_str = body.decode('utf-8')
+        else:
+            body_str = str(body)
+        
         try:
             # Parse message
-            message_data = json.loads(body)
+            message_data = json.loads(body_str)
             task = TaskMessage.from_dict(message_data)
             
             self.logger.info(f"Received task {task.task_id} for target {task.target}")
@@ -530,7 +540,8 @@ class BaseAgent(ABC):
             
         except json.JSONDecodeError as e:
             self.logger.error(f"Invalid JSON message: {e}")
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            if channel:
+                channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             self.tasks_failed += 1
             
         except Exception as e:
@@ -554,7 +565,8 @@ class BaseAgent(ABC):
                 self.db.store_task_result(result)
                 self._publish_result(result)
             
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            if channel:
+                channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
             self.tasks_failed += 1
     
     @abstractmethod
@@ -579,24 +591,19 @@ class BaseAgent(ABC):
         heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
         heartbeat_thread.start()
         
-        while self._running:
+        while self._running and not self._shutdown_event.is_set():
             try:
-                if not self._connect_rabbitmq():
-                    self.logger.error("Failed to connect, retrying in 10 seconds...")
-                    time.sleep(10)
-                    continue
+                if not self._connection or self._connection.is_closed:
+                    if not self._connect_rabbitmq() or not self._channel:
+                        time.sleep(5)
+                        continue
                 
-                # Start consuming
+                self.logger.info("Waiting for tasks...")
                 self._channel.basic_consume(
                     queue=self.queue_name,
-                    on_message_callback=self._message_callback,
-                    auto_ack=False
+                    on_message_callback=self._message_callback
                 )
-                
-                self.logger.info(f"Agent {self.agent_id} ready, waiting for tasks...")
-                
-                while self._running:
-                    self._connection.process_data_events(time_limit=1)
+                self._channel.start_consuming()
                 
             except pika.exceptions.AMQPConnectionError as e:
                 self.logger.error(f"Connection lost: {e}, reconnecting...")
@@ -637,19 +644,20 @@ class WebScannerAgent(BaseAgent):
         # Import scanner module
         try:
             # Add modules path
-            sys.path.insert(0, '/app/modules')
-            from web_scanner import WebScanner
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'red_team'))
+            from web_scanner import WebScanner # type: ignore
             self.scanner_class = WebScanner
             self.logger.info("Web scanner module loaded successfully")
         except ImportError as e:
-            self.logger.warning(f"Could not import module_a_web_scanner: {e}")
+            self.logger.warning(f"Could not import web_scanner: {e}")
             self.scanner_class = None
     
     def execute_task(self, task: TaskMessage) -> tuple:
         """Execute web security scan."""
         findings = []
         risk_score = 0.0
-        raw_output = {}
+        raw_output: Dict[str, Any] = {}
         
         target = task.target
         if not target.startswith(('http://', 'https://')):
@@ -728,7 +736,7 @@ class WebScannerAgent(BaseAgent):
         
         findings = []
         risk_score = 0.0
-        raw_output = {}
+        raw_output: Dict[str, Any] = {}
         
         try:
             session = requests.Session()
@@ -763,9 +771,9 @@ class WebScannerAgent(BaseAgent):
                     ))
                     risk_score += self._severity_to_score(severity)
             
-        except requests.RequestException as e:
+        except Exception as e:
             raw_output['error'] = str(e)
-        
+            
         risk_score = min(100.0, risk_score)
         return findings, risk_score, raw_output
     
@@ -805,19 +813,21 @@ class NetworkScannerAgent(BaseAgent):
         )
         
         try:
-            sys.path.insert(0, '/app/modules')
-            from network_scanner import NetworkScanner as PortScanner
+            # Add modules path
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'red_team'))
+            from network_scanner import NetworkScanner as PortScanner # type: ignore
             self.scanner_class = PortScanner
             self.logger.info("Port scanner module loaded successfully")
         except ImportError as e:
-            self.logger.warning(f"Could not import module_b_port_scanner: {e}")
+            self.logger.warning(f"Could not import network_scanner: {e}")
             self.scanner_class = None
     
     def execute_task(self, task: TaskMessage) -> tuple:
         """Execute network port scan."""
         findings = []
         risk_score = 0.0
-        raw_output = {}
+        raw_output: Dict[str, Any] = {}
         
         target = task.target
         # Remove protocol if present
@@ -890,7 +900,7 @@ class NetworkScannerAgent(BaseAgent):
         """Fallback built-in port scanning."""
         findings = []
         risk_score = 0.0
-        raw_output = {'open_ports': [], 'closed_ports': [], 'filtered_ports': []}
+        raw_output: Dict[str, Any] = {'open_ports': [], 'closed_ports': [], 'filtered_ports': []}
         
         # Critical ports to scan
         critical_ports = {
@@ -970,7 +980,7 @@ class NetworkScannerAgent(BaseAgent):
 
 def create_agent(agent_type: str) -> BaseAgent:
     """Factory function to create appropriate agent instance."""
-    agents = {
+    agents: Dict[str, Type[BaseAgent]] = {
         'web_scanner': WebScannerAgent,
         'red_team_web_scanner': WebScannerAgent,
         'network_scanner': NetworkScannerAgent,
@@ -982,7 +992,7 @@ def create_agent(agent_type: str) -> BaseAgent:
     if not agent_class:
         raise ValueError(f"Unknown agent type: {agent_type}")
     
-    return agent_class()
+    return agent_class() # type: ignore
 
 # =============================================================================
 # MAIN ENTRY POINT

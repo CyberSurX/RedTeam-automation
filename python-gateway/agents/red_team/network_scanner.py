@@ -9,7 +9,7 @@ import socket
 import threading
 import logging
 import json
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from datetime import datetime, timezone
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -126,7 +126,7 @@ class NetworkScanner:
         self.timeout = timeout
         self.max_threads = max_threads
         self.banner_timeout = banner_timeout
-        self.results = {
+        self.results: Dict[str, Any] = {
             'scan_id': str(uuid.uuid4()),
             'scan_timestamp': datetime.now(timezone.utc).isoformat(),
             'target_ip': None,
@@ -142,29 +142,65 @@ class NetworkScanner:
         self.lock = threading.Lock()
     
     def validate_target(self, target: str) -> Tuple[bool, str, Optional[str]]:
-        """
-        Validate and resolve target (IP or hostname).
-        
-        Args:
-            target: IP address or hostname to validate
+        """Validate target format and return normalized target or error."""
+        try:
+            import ipaddress
+            import urllib.parse
             
-        Returns:
-            Tuple of (is_valid, ip_address, hostname)
+            # Handle URLs
+            if target.startswith('http://') or target.startswith('https://'):
+                parsed = urllib.parse.urlparse(target)
+                target = parsed.netloc.split(':')[0]
+            
+            # Try parsing as IP
+            try:
+                ip = ipaddress.ip_address(target)
+                return True, str(ip), None
+            except ValueError:
+                pass
+            
+            # Try parsing as domain
+            try:
+                ip_str = socket.gethostbyname(target)
+                return True, target, ip_str
+            except socket.gaierror:
+                return False, target, "Could not resolve hostname"
+                
+        except Exception as e:
+            return False, f"Invalid target: {str(e)}", None
+    
+    def check_host_alive(self, target: str) -> Tuple[bool, str, Optional[str]]:
+        """
+        Determine if host is reachable via ICMP or fallback TCP checks.
+        Returns: (is_alive, ip_address, reason)
         """
         try:
-            # Try to parse as IP address first
-            ip = ipaddress.ip_address(target)
-            return True, str(ip), None
-        except ValueError:
-            pass
-        
-        try:
-            # Try to resolve hostname
-            ip = socket.gethostbyname(target)
-            return True, ip, target
-        except socket.gaierror as e:
-            logger.error(f"Failed to resolve hostname {target}: {e}")
-            return False, f"Invalid target: {str(e)}", None
+            import ipaddress
+            try:
+                ip = ipaddress.ip_address(target)
+                ip_str = str(ip)
+            except ValueError:
+                # Resolve domain to IP
+                ip_str = socket.gethostbyname(target)
+                ip = ipaddress.ip_address(ip_str)
+            
+            # Simple ICMP ping (requires root/sudo usually)
+            # Falling back to TCP port 80/443 check if ICMP fails or permissions deny
+            # For simplicity in container environments, we'll try a quick TCP connect
+            # to common ports to determine if the host is up.
+            
+            common_ports = [80, 443, 22, 21, 3389, 8080]
+            
+            for port in common_ports:
+                if self.scan_port(ip_str, port).status == 'open':
+                    return True, ip_str, f"Responded on TCP/{port}"
+                    
+            return False, ip_str, "Host appears down"
+            
+        except socket.gaierror:
+            return False, target, "DNS Resolution Failed"
+        except Exception as e:
+            return False, target, f"Error: {str(e)}"
     
     def grab_banner(self, ip_address: str, port: int) -> Optional[str]:
         """
@@ -289,8 +325,8 @@ class NetworkScanner:
         
         return result
     
-    def scan_ports(self, target: str, ports: List[int] = None, 
-                   grab_banners: bool = True) -> Dict:
+    def scan_ports(self, target: str, ports: Optional[List[int]] = None, 
+                   grab_banners: bool = True) -> Dict[str, Any]:
         """
         Scan multiple ports on target using concurrent threading.
         
@@ -314,9 +350,13 @@ class NetworkScanner:
         self.results['target_ip'] = ip_address
         self.results['target_hostname'] = hostname
         
+        if ports and not isinstance(ports, list):
+            ports = None
+            
         # Use critical ports if none specified
         if ports is None:
-            ports = list(self.CRITICAL_PORTS.keys())
+            ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 
+                     993, 995, 1723, 3306, 3389, 5900, 8080, 8443]
         
         logger.info(f"Starting port scan on {ip_address} ({hostname or 'no hostname'}) for {len(ports)} ports")
         start_time = time.time()
@@ -335,13 +375,17 @@ class NetworkScanner:
                         
                         with self.lock:
                             if result.status == 'open':
-                                self.results['open_ports'].append(result_dict)
+                                if isinstance(self.results.get('open_ports'), list):
+                                    self.results['open_ports'].append(result_dict)
                             elif result.status == 'closed':
-                                self.results['closed_ports'].append(result_dict)
+                                if isinstance(self.results.get('closed_ports'), list):
+                                    self.results['closed_ports'].append(result_dict)
                             else:
-                                self.results['filtered_ports'].append(result_dict)
+                                if isinstance(self.results.get('filtered_ports'), list):
+                                    self.results['filtered_ports'].append(result_dict)
                             
-                            self.results['ports_scanned'] += 1
+                            if isinstance(self.results.get('ports_scanned'), int):
+                                self.results['ports_scanned'] += 1
                             
                     except Exception as e:
                         logger.error(f"Error processing scan result: {e}")
@@ -349,6 +393,7 @@ class NetworkScanner:
             # Calculate scan duration
             self.results['scan_duration'] = round(time.time() - start_time, 2)
             self.results['scan_status'] = 'completed'
+            self.results['end_time'] = datetime.now(timezone.utc).isoformat()
             
             # Generate risk assessment
             self.results['risk_assessment'] = self.get_risk_assessment()
@@ -358,20 +403,26 @@ class NetworkScanner:
             
         except Exception as e:
             logger.error(f"Scan failed: {e}")
+            self.results['scan_duration'] = 0.0
+            self.results['end_time'] = datetime.now(timezone.utc).isoformat()
             self.results['scan_status'] = 'failed'
             self.results['error'] = str(e)
         
         return self.results
     
-    def get_risk_assessment(self) -> Dict:
+    def get_risk_assessment(self) -> Dict[str, Any]:
         """
         Generate comprehensive risk assessment based on open ports.
         
         Returns:
             Dictionary containing risk assessment
         """
-        assessment = {
-            'total_open_ports': len(self.results['open_ports']),
+        open_ports = self.results.get('open_ports', [])
+        if not isinstance(open_ports, list):
+            open_ports = []
+
+        assessment: Dict[str, Any] = {
+            'total_open_ports': len(open_ports),
             'critical_ports_open': [],
             'high_severity_ports': [],
             'medium_severity_ports': [],
@@ -385,7 +436,7 @@ class NetworkScanner:
         severity_scores = {'critical': 25, 'high': 15, 'medium': 8, 'low': 3}
         total_score = 0
         
-        for port_info in self.results['open_ports']:
+        for port_info in open_ports:
             severity = port_info.get('severity', 'low')
             port = port_info.get('port')
             service = port_info.get('service', 'Unknown')
