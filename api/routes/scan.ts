@@ -1,5 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import axios from 'axios';
+import { authenticate } from '../src/middleware/auth.js';
+import { AppDataSource } from '../src/config/data-source.js';
+import { Domain } from '../src/entities/Domain.js';
 
 const router = Router();
 
@@ -17,6 +20,9 @@ const axiosClient = axios.create({
  * Proxy routes to Python Scanning Gateway (CyberSurhub)
  * All /api/scan/* routes are forwarded to the Python backend
  */
+
+// Apply auth middleware
+router.use(authenticate);
 
 // Health check for Python gateway
 router.get('/health', async (req: Request, res: Response): Promise<void> => {
@@ -36,15 +42,37 @@ router.get('/health', async (req: Request, res: Response): Promise<void> => {
 router.post('/start', async (req: Request, res: Response): Promise<void> => {
   try {
     const { targets, intensity = 'normal' } = req.body;
+    const userId = (req as any).user.id;
 
     if (!targets || !Array.isArray(targets) || targets.length === 0) {
       res.status(400).json({ error: 'targets array is required' });
       return;
     }
 
+    // VERIFY DOMAIN OWNERSHIP BEFORE SCANNING
+    const domainRepository = AppDataSource.getRepository(Domain);
+    
+    for (const target of targets) {
+      const cleanTarget = target.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+      const verifiedDomain = await domainRepository.findOne({
+        where: { 
+          domain: cleanTarget,
+          userId: userId,
+          status: 'verified'
+        }
+      });
+
+      if (!verifiedDomain) {
+        res.status(403).json({ 
+          error: `Unauthorized to scan target: ${target}. You must verify domain ownership first.` 
+        });
+        return;
+      }
+    }
+
     const missionPayload = {
       mission_name: `Scan-${Date.now()}`,
-      client_name: 'RedTeam-automation',
+      client_name: `User-${userId}`,
       targets,
       modules: ['web_scanner'],
       intensity,

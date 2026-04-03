@@ -14,7 +14,9 @@ import {
   XCircle,
   Download,
   Upload,
-  User
+  User,
+  CreditCard,
+  Globe
 } from 'lucide-react';
 
 interface APIKey {
@@ -46,6 +48,14 @@ interface UserProfile {
   notificationsEnabled: boolean;
 }
 
+interface Domain {
+  id: string;
+  domain: string;
+  status: 'pending' | 'verified' | 'failed';
+  verificationToken: string;
+  createdAt: string;
+}
+
 export const Settings: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [securitySettings, setSecuritySettings] = useState<SecuritySetting[]>([]);
@@ -60,6 +70,12 @@ export const Settings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // States for new features
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [newDomain, setNewDomain] = useState('');
+  const [isVerifying, setIsVerifying] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -102,6 +118,10 @@ export const Settings: React.FC = () => {
         { id: '5', name: 'Data Encryption', description: 'Encrypt sensitive data at rest', value: sec.dataEncryption ?? true, type: 'boolean' },
         { id: '6', name: 'Audit Logging', description: 'Enable comprehensive audit logging', value: sec.auditLogging ?? true, type: 'boolean' }
       ]);
+
+      // Also fetch domains
+      const domainRes = await axios.get('/api/domains').catch(() => ({ data: [] }));
+      setDomains(domainRes.data || []);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
     } finally {
@@ -243,6 +263,52 @@ export const Settings: React.FC = () => {
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleAddDomain = async () => {
+    if (!newDomain) return;
+    try {
+      const res = await axios.post('/api/domains', { domainName: newDomain });
+      setDomains([res.data, ...domains]);
+      setNewDomain('');
+      alert('Domain added successfully. Please add the TXT record to verify.');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add domain');
+    }
+  };
+
+  const handleVerifyDomain = async (id: string) => {
+    setIsVerifying(id);
+    try {
+      const res = await axios.post(`/api/domains/${id}/verify`);
+      setDomains(domains.map(d => d.id === id ? res.data.domain : d));
+      alert('Domain verified successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to verify domain');
+    } finally {
+      setIsVerifying(null);
+    }
+  };
+
+  const handleDeleteDomain = async (id: string) => {
+    try {
+      await axios.delete(`/api/domains/${id}`);
+      setDomains(domains.filter(d => d.id !== id));
+      alert('Domain deleted successfully.');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete domain');
+    }
+  };
+
+  const handleCheckout = async (planId: string) => {
+    setCheckoutLoading(true);
+    try {
+      const res = await axios.post('/api/billing/create-checkout-session', { planId });
+      window.location.href = res.data.url;
+    } catch (err) {
+      alert('Failed to start checkout process');
+      setCheckoutLoading(false);
     }
   };
 
@@ -504,6 +570,132 @@ export const Settings: React.FC = () => {
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Domains Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Globe className="h-5 w-5 mr-2" />
+            Domains
+          </CardTitle>
+          <CardDescription>Manage and verify your domains</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <h3 className="font-medium mb-3">Add New Domain</h3>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                placeholder="example.com"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Button onClick={handleAddDomain}>
+                Add Domain
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {domains.map((domain) => (
+              <div key={domain.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <div className="font-medium">{domain.domain}</div>
+                  <div className="text-sm text-gray-500">
+                    Added: {new Date(domain.createdAt).toLocaleDateString()}
+                  </div>
+                  {domain.status === 'pending' && (
+                    <div className="text-xs mt-1 p-2 bg-yellow-50 text-yellow-800 rounded border border-yellow-200 break-all">
+                      Add TXT record: <code>{domain.verificationToken}</code>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge className={
+                    domain.status === 'verified' ? 'bg-green-100 text-green-800' :
+                    domain.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }>
+                    {domain.status.toUpperCase()}
+                  </Badge>
+                  {domain.status === 'pending' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleVerifyDomain(domain.id)}
+                      disabled={isVerifying === domain.id}
+                    >
+                      {isVerifying === domain.id ? 'Verifying...' : 'Verify'}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteDomain(domain.id)}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <CreditCard className="h-5 w-5 mr-2" />
+            Billing & Plans
+          </CardTitle>
+          <CardDescription>Manage your subscription and billing details</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 border rounded-lg flex flex-col">
+              <h3 className="text-lg font-bold mb-2">Basic</h3>
+              <p className="text-gray-500 mb-4 flex-1">Perfect for getting started</p>
+              <div className="text-2xl font-bold mb-6">$29<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => handleCheckout('price_basic')}
+                disabled={checkoutLoading}
+              >
+                Subscribe
+              </Button>
+            </div>
+            <div className="p-6 border rounded-lg border-blue-500 relative flex flex-col">
+              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg">Popular</div>
+              <h3 className="text-lg font-bold mb-2">Pro</h3>
+              <p className="text-gray-500 mb-4 flex-1">Best for active hunters</p>
+              <div className="text-2xl font-bold mb-6">$99<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+              <Button 
+                className="w-full"
+                onClick={() => handleCheckout('price_pro')}
+                disabled={checkoutLoading}
+              >
+                Subscribe
+              </Button>
+            </div>
+            <div className="p-6 border rounded-lg flex flex-col">
+              <h3 className="text-lg font-bold mb-2">Enterprise</h3>
+              <p className="text-gray-500 mb-4 flex-1">For large teams and organizations</p>
+              <div className="text-2xl font-bold mb-6">$299<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => handleCheckout('price_enterprise')}
+                disabled={checkoutLoading}
+              >
+                Contact Sales
+              </Button>
             </div>
           </div>
         </CardContent>

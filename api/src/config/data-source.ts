@@ -12,6 +12,8 @@ import { AuditLog } from '../entities/AuditLog.js'
 import { Job } from '../entities/Job.js'
 import { JobLog } from '../entities/JobLog.js'
 import { ApiKey } from '../entities/ApiKey.js'
+import { Domain } from '../entities/Domain.js'
+import { Subscription } from '../entities/Subscription.js'
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -22,7 +24,7 @@ export const AppDataSource = new DataSource({
     database: process.env.POSTGRES_DB || "redteam_automation",
     synchronize: process.env.NODE_ENV !== "production",
     logging: process.env.NODE_ENV !== "production",
-    entities: [User, Program, Finding, Report, Mission, TaskResult, ScopeAgreement, AgentHealth, AuditLog, Job, JobLog, ApiKey],
+    entities: [User, Program, Finding, Report, Mission, TaskResult, ScopeAgreement, AgentHealth, AuditLog, Job, JobLog, ApiKey, Domain, Subscription],
     migrations: [],
     subscribers: [],
 })

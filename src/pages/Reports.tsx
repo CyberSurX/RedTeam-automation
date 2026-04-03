@@ -16,7 +16,8 @@ import {
   DollarSign,
   Calendar,
   User,
-  Tag
+  Tag,
+  FileDown
 } from 'lucide-react';
 
 interface Report {
@@ -62,6 +63,7 @@ export const Reports: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const reportTemplates: ReportTemplate[] = [
     {
@@ -183,6 +185,36 @@ export const Reports: React.FC = () => {
 
   const handleDeleteReport = async (reportId: string) => {
     setReports(prev => prev.filter(report => report.id !== reportId));
+  };
+
+  const handleDownload = async (reportId: string, programId?: string) => {
+    // If it's a real program export
+    if (programId) {
+      try {
+        setDownloadingId(reportId);
+        const response = await axios.get(`/api/export/${programId}`, {
+          responseType: 'blob'
+        });
+        
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Security_Report_${programId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Failed to download report', error);
+        alert('Failed to download PDF report');
+      } finally {
+        setDownloadingId(null);
+      }
+    } else {
+      // Mock logic for existing UI
+      console.log('Downloading mock report:', reportId);
+      alert('This is a demo report. Real reports require a completed scan.');
+    }
   };
 
   const getStatusColor = (status: string) => {
