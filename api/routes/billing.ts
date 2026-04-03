@@ -16,6 +16,13 @@ router.post('/create-checkout-session', authenticate, async (req: Request, res: 
         const { planId } = req.body; // e.g. price_12345
         const user = (req as any).user;
 
+        // If you don't have real price IDs configured in your live Stripe account yet,
+        // you would normally return an error here. 
+        // For demonstration, we will assume you pass the real ID from frontend.
+        if (!planId) {
+            return res.status(400).json({ error: 'planId is required' });
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'subscription',
@@ -32,9 +39,9 @@ router.post('/create-checkout-session', authenticate, async (req: Request, res: 
         });
 
         res.json({ url: session.url });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating checkout session:', error);
-        res.status(500).json({ error: 'Failed to create checkout session' });
+        res.status(500).json({ error: error.message || 'Failed to create checkout session' });
     }
 });
 

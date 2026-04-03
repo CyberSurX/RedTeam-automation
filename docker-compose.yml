@@ -11,6 +11,7 @@ services:
       - "80:80"
     environment:
       - VITE_API_URL=http://backend:3001
+      - VITE_STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
     depends_on:
       - backend
     networks:
@@ -39,6 +40,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - PYTHON_GATEWAY_URL=http://python-gateway:8000
       - PYTHON_GATEWAY_API_KEY=dev-secret-key
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
     depends_on:
       database:
         condition: service_healthy
