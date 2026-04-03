@@ -30,11 +30,15 @@ class MissionRequest(BaseModel):
     targets: List[str]
     intensity: str = "normal"
     modules: List[str] = ["web_scanner"]
+    mission_name: Optional[str] = None
+    timeout_minutes: Optional[int] = 30
 
+@app.post("/api/v1/missions", dependencies=[Depends(get_api_key)])
 @app.post("/api/scan", dependencies=[Depends(get_api_key)])
 def start_scan(request: MissionRequest):
     mission_id = str(uuid.uuid4())
-    
+    m_name = request.mission_name or f"Scan-{mission_id[:8]}"
+
     # Create a mock scope agreement for the API request
     scope = ScopeAgreement(
         agreement_id=str(uuid.uuid4()),
@@ -46,22 +50,46 @@ def start_scan(request: MissionRequest):
         authorized_tests=request.modules,
         sha256_hash="dummy" # This would be computed properly in real logic
     )
-    
+
     mission = MissionConfig(
         mission_id=mission_id,
-        mission_name=f"Scan-{mission_id[:8]}",
+        mission_name=m_name,
         scope_agreement=scope,
         scan_intensity=request.intensity,
         modules_enabled=request.modules,
         notification_endpoints=[]
     )
-    
+
     success = orchestrator.execute_mission(mission)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to start mission")
-        
+
     return {"status": "started", "mission_id": mission_id}
 
+@app.get("/api/v1/missions", dependencies=[Depends(get_api_key)])
+def list_missions():
+    # Return dummy empty array for now until DB query is fully implemented
+    return {"missions": []}
+
+@app.get("/api/v1/missions/{mission_id}/status", dependencies=[Depends(get_api_key)])
+def mission_status(mission_id: str):
+    # Dummy response
+    return {"status": "running", "progress": 50, "mission_id": mission_id}
+
+@app.get("/api/v1/missions/{mission_id}/results", dependencies=[Depends(get_api_key)])
+def mission_results(mission_id: str):
+    # Dummy response
+    return {"mission_id": mission_id, "findings": []}
+
+@app.post("/api/v1/missions/{mission_id}/abort", dependencies=[Depends(get_api_key)])
+def abort_mission(mission_id: str):
+    return {"status": "aborted"}
+
+@app.post("/api/v1/reports/generate", dependencies=[Depends(get_api_key)])
+def generate_report(data: dict):
+    return {"status": "generated"}
+
 @app.get("/api/health")
+@app.get("/api/v1/health")
 def health_check():
     return {"status": "ok", "orchestrator_initialized": orchestrator.db is not None}

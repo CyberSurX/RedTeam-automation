@@ -37,10 +37,14 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-to-a-random-secret}
       - CORS_ORIGIN=http://localhost:80
       - REDIS_URL=redis://redis:6379
+      - PYTHON_GATEWAY_URL=http://python-gateway:8000
+      - PYTHON_GATEWAY_API_KEY=dev-secret-key
     depends_on:
       database:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      python-gateway:
         condition: service_healthy
     networks:
       - app-network
@@ -92,19 +96,6 @@ services:
       retries: 3
       start_period: 30s
 
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-
-networks:
-  app-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -123,3 +114,45 @@ networks:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Python AI & Scanner Gateway
+  python-gateway:
+    build:
+      context: ./python-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:postgres@database:5432/redteam_automation
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://cybersurhub:secure_password@rabbitmq:5672/
+      - API_KEY=dev-secret-key
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -3,7 +3,15 @@ import axios from 'axios';
 
 const router = Router();
 
-const PYTHON_GATEWAY_URL = process.env.PYTHON_GATEWAY_URL || 'http://python-gateway:8080';
+const PYTHON_GATEWAY_URL = process.env.PYTHON_GATEWAY_URL || 'http://python-gateway:8000';
+const PYTHON_GATEWAY_API_KEY = process.env.PYTHON_GATEWAY_API_KEY || 'dev-secret-key';
+
+const axiosClient = axios.create({
+  headers: {
+    'X-API-Key': PYTHON_GATEWAY_API_KEY,
+    'Content-Type': 'application/json'
+  }
+});
 
 /**
  * Proxy routes to Python Scanning Gateway (CyberSurhub)
@@ -13,7 +21,7 @@ const PYTHON_GATEWAY_URL = process.env.PYTHON_GATEWAY_URL || 'http://python-gate
 // Health check for Python gateway
 router.get('/health', async (req: Request, res: Response): Promise<void> => {
   try {
-    const response = await axios.get(`${PYTHON_GATEWAY_URL}/api/v1/health`, { timeout: 5000 });
+    const response = await axiosClient.get(`${PYTHON_GATEWAY_URL}/api/health`, { timeout: 5000 });
     res.json(response.data);
   } catch {
     res.status(503).json({
@@ -43,7 +51,7 @@ router.post('/start', async (req: Request, res: Response): Promise<void> => {
       timeout_minutes: 30
     };
 
-    const response = await axios.post(
+    const response = await axiosClient.post(
       `${PYTHON_GATEWAY_URL}/api/v1/missions`,
       missionPayload,
       { timeout: 30000 }
@@ -63,7 +71,7 @@ router.post('/start', async (req: Request, res: Response): Promise<void> => {
 router.get('/status/:missionId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { missionId } = req.params;
-    const response = await axios.get(
+    const response = await axiosClient.get(
       `${PYTHON_GATEWAY_URL}/api/v1/missions/${missionId}/status`,
       { timeout: 10000 }
     );
@@ -83,7 +91,7 @@ router.get('/status/:missionId', async (req: Request, res: Response): Promise<vo
 // List all scans/missions
 router.get('/jobs', async (req: Request, res: Response): Promise<void> => {
   try {
-    const response = await axios.get(
+    const response = await axiosClient.get(
       `${PYTHON_GATEWAY_URL}/api/v1/missions`,
       { timeout: 10000 }
     );
@@ -122,7 +130,7 @@ router.get('/jobs', async (req: Request, res: Response): Promise<void> => {
 router.get('/results/:missionId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { missionId } = req.params;
-    const response = await axios.get(
+    const response = await axiosClient.get(
       `${PYTHON_GATEWAY_URL}/api/v1/missions/${missionId}/results`,
       { timeout: 10000 }
     );
@@ -141,7 +149,7 @@ router.post('/report/:missionId', async (req: Request, res: Response): Promise<v
     const { missionId } = req.params;
     const { formats = ['html', 'json'] } = req.body;
 
-    const response = await axios.post(
+    const response = await axiosClient.post(
       `${PYTHON_GATEWAY_URL}/api/v1/reports/generate`,
       { mission_id: missionId, formats },
       { timeout: 60000 }
@@ -159,7 +167,7 @@ router.post('/report/:missionId', async (req: Request, res: Response): Promise<v
 router.post('/abort/:missionId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { missionId } = req.params;
-    const response = await axios.post(
+    const response = await axiosClient.post(
       `${PYTHON_GATEWAY_URL}/api/v1/missions/${missionId}/abort`,
       {},
       { timeout: 10000 }
