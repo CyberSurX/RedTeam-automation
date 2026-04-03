@@ -3,31 +3,40 @@ import Stripe from 'stripe';
 import { AppDataSource } from '../src/config/data-source.js';
 import { Subscription } from '../src/entities/Subscription.js';
 import { User } from '../src/entities/User.js';
+import { License } from '../src/entities/License.js';
 import { authenticate } from '../src/middleware/auth.js';
+import crypto from 'crypto';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
     apiVersion: '2023-10-16' as any
 });
 
-// Create a checkout session
+function generateLicenseKey(tier: string) {
+    const randomHex = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const prefix = tier === 'enterprise' ? 'RTA-ENT' : tier === 'pro' ? 'RTA-PRO' : 'RTA-BSC';
+    return `${prefix}-${randomHex.slice(0,4)}-${randomHex.slice(4,8)}-${randomHex.slice(8,12)}`;
+}
+
+// Create a checkout session (For Lifetime License Sales)
 router.post('/create-checkout-session', authenticate, async (req: Request, res: Response) => {
     try {
-        const { planId } = req.body; // e.g. price_12345
+        const { planId, tier = 'pro' } = req.body; // e.g. price_12345
         const user = (req as any).user;
 
-        // If you don't have real price IDs configured in your live Stripe account yet,
-        // you would normally return an error here. 
-        // For demonstration, we will assume you pass the real ID from frontend.
         if (!planId) {
             return res.status(400).json({ error: 'planId is required' });
         }
 
+        // Convert subscription mode to payment mode for Lifetime Deals
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            mode: 'subscription',
+            mode: 'payment', // One-time payment instead of 'subscription'
             customer_email: user.email,
             client_reference_id: user.id,
+            metadata: {
+                tier: tier // pass the tier to webhook
+            },
             line_items: [
                 {
                     price: planId,
@@ -53,9 +62,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     let event;
 
     try {
-        // Using express.raw() in server.ts for this route is required to get raw body
         if (!endpointSecret) {
-            // For testing without webhook secret
             event = req.body;
         } else {
             event = stripe.webhooks.constructEvent(req.body, sig as string, endpointSecret);
@@ -66,38 +73,28 @@ router.post('/webhook', async (req: Request, res: Response) => {
     }
 
     try {
-        const subscriptionRepo = AppDataSource.getRepository(Subscription);
+        const licenseRepo = AppDataSource.getRepository(License);
         const userRepo = AppDataSource.getRepository(User);
 
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object as Stripe.Checkout.Session;
                 const userId = session.client_reference_id;
+                const paymentIntentId = session.payment_intent as string;
                 
-                if (userId) {
-                    const subscription = new Subscription();
-                    subscription.userId = userId;
-                    subscription.stripeCustomerId = session.customer as string;
-                    subscription.stripeSubscriptionId = session.subscription as string;
-                    subscription.status = 'active';
-                    subscription.planId = 'pro_plan'; // Should map from Stripe product
-                    subscription.scanQuota = 100; // Define based on plan
+                if (userId && session.payment_status === 'paid') {
+                    const tier = session.metadata?.tier || 'pro';
                     
-                    await subscriptionRepo.save(subscription);
-                }
-                break;
-            }
-            case 'customer.subscription.updated':
-            case 'customer.subscription.deleted': {
-                const stripeSub = event.data.object as Stripe.Subscription;
-                const subscription = await subscriptionRepo.findOne({
-                    where: { stripeSubscriptionId: stripeSub.id }
-                });
-
-                if (subscription) {
-                    subscription.status = stripeSub.status;
-                    subscription.currentPeriodEnd = new Date(stripeSub.current_period_end * 1000);
-                    await subscriptionRepo.save(subscription);
+                    // Create new lifetime license
+                    const license = new License();
+                    license.userId = userId;
+                    license.tier = tier as any;
+                    license.status = 'active';
+                    license.stripePaymentIntentId = paymentIntentId;
+                    license.licenseKey = generateLicenseKey(tier);
+                    
+                    await licenseRepo.save(license);
+                    console.log(`✅ Generated new lifetime license: ${license.licenseKey} for user ${userId}`);
                 }
                 break;
             }

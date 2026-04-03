@@ -76,12 +76,58 @@ export const Settings: React.FC = () => {
   const [newDomain, setNewDomain] = useState('');
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  
+  const [licenseKey, setLicenseKey] = useState('');
+  const [activeLicense, setActiveLicense] = useState<any>(null);
+  const [myLicenses, setMyLicenses] = useState<any[]>([]);
 
   useEffect(() => {
     fetchSettings();
+    fetchLicenses();
   }, []);
 
-  const fetchSettings = async () => {
+  const fetchLicenses = async () => {
+    try {
+      const res = await axios.get('/api/licenses/my-licenses');
+      setMyLicenses(res.data);
+      if (res.data.length > 0) {
+        setActiveLicense(res.data[0]); // Just pick the first one for display
+      }
+    } catch (e) {
+      console.error('Failed to load licenses');
+    }
+  };
+
+  const handleVerifyLicense = async () => {
+    if (!licenseKey) return;
+    setLoading(true);
+    try {
+      // In a real desktop app, we'd send a machine UUID.
+      // For web, we just validate it exists and is active.
+      const res = await axios.post('/api/licenses/validate', { 
+        licenseKey: licenseKey,
+        hardwareId: 'web-browser-client'
+      });
+      setActiveLicense(res.data);
+      setSuccessMessage(`License verified successfully! Tier: ${res.data.tier}`);
+      fetchLicenses();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Invalid license key');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckout = async (planId: string, tier: string) => {
+    setCheckoutLoading(true);
+    try {
+      const res = await axios.post('/api/billing/create-checkout-session', { planId, tier });
+      window.location.href = res.data.url;
+    } catch (err) {
+      alert('Failed to start checkout process. Have you configured Stripe Products?');
+      setCheckoutLoading(false);
+    }
+  };
     setIsLoading(true);
     try {
       const [profileRes, apiKeysRes] = await Promise.all([
@@ -302,14 +348,8 @@ export const Settings: React.FC = () => {
   };
 
   const handleCheckout = async (planId: string) => {
-    setCheckoutLoading(true);
-    try {
-      const res = await axios.post('/api/billing/create-checkout-session', { planId });
-      window.location.href = res.data.url;
-    } catch (err) {
-      alert('Failed to start checkout process');
-      setCheckoutLoading(false);
-    }
+    // This function will be replaced by the updated one above
+    // I'm putting it here temporarily so it won't break if old references exist
   };
 
   if (isLoading) {
@@ -652,52 +692,112 @@ export const Settings: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <CreditCard className="h-5 w-5 mr-2" />
-            Billing & Plans
+            Licenses & Billing
           </CardTitle>
-          <CardDescription>Manage your subscription and billing details</CardDescription>
+          <CardDescription>Purchase and manage your one-time software licenses</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-8 p-6 bg-slate-50 border rounded-lg">
+            <h3 className="text-lg font-bold mb-2">Activate Existing License</h3>
+            <p className="text-sm text-gray-500 mb-4">Enter your license key below to unlock features.</p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                placeholder="RTA-XXXX-YYYY-ZZZZ"
+                value={licenseKey}
+                onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase tracking-widest"
+              />
+              <Button onClick={handleVerifyLicense} disabled={loading || !licenseKey}>
+                {loading ? 'Verifying...' : 'Activate'}
+              </Button>
+            </div>
+            {activeLicense && (
+              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-green-800 flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Active License Found: <strong className="ml-2 capitalize">{activeLicense.tier} Tier</strong>
+              </div>
+            )}
+          </div>
+
+          <h3 className="text-lg font-bold mb-4">Purchase Lifetime License</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-6 border rounded-lg flex flex-col">
               <h3 className="text-lg font-bold mb-2">Basic</h3>
-              <p className="text-gray-500 mb-4 flex-1">Perfect for getting started</p>
-              <div className="text-2xl font-bold mb-6">$29<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+              <p className="text-gray-500 mb-4 flex-1">Perfect for independent security researchers.</p>
+              <div className="text-3xl font-bold mb-2">$149<span className="text-sm text-gray-500 font-normal"> / lifetime</span></div>
+              <ul className="text-sm space-y-2 mb-6">
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Single Machine License</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Basic Web Scans</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> HTML Reports</li>
+              </ul>
               <Button 
                 variant="outline" 
-                className="w-full"
-                onClick={() => handleCheckout('price_basic')}
+                className="w-full mt-auto"
+                onClick={() => handleCheckout('price_basic', 'basic')}
                 disabled={checkoutLoading}
               >
-                Subscribe
+                Buy Basic
               </Button>
             </div>
-            <div className="p-6 border rounded-lg border-blue-500 relative flex flex-col">
-              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg">Popular</div>
-              <h3 className="text-lg font-bold mb-2">Pro</h3>
-              <p className="text-gray-500 mb-4 flex-1">Best for active hunters</p>
-              <div className="text-2xl font-bold mb-6">$99<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+            <div className="p-6 border rounded-lg border-blue-500 relative flex flex-col shadow-sm">
+              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg font-bold">Recommended</div>
+              <h3 className="text-lg font-bold mb-2 text-blue-700">Pro</h3>
+              <p className="text-gray-500 mb-4 flex-1">The standard for professional penetration testers.</p>
+              <div className="text-3xl font-bold mb-2 text-blue-700">$499<span className="text-sm text-gray-500 font-normal"> / lifetime</span></div>
+              <ul className="text-sm space-y-2 mb-6">
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Up to 3 Machines</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Deep Network Scans</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> PDF Export</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> 1 Year Updates</li>
+              </ul>
               <Button 
-                className="w-full"
-                onClick={() => handleCheckout('price_pro')}
+                className="w-full mt-auto bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleCheckout('price_pro', 'pro')}
                 disabled={checkoutLoading}
               >
-                Subscribe
+                Buy Pro
               </Button>
             </div>
-            <div className="p-6 border rounded-lg flex flex-col">
+            <div className="p-6 border rounded-lg flex flex-col bg-gray-900 text-white">
               <h3 className="text-lg font-bold mb-2">Enterprise</h3>
-              <p className="text-gray-500 mb-4 flex-1">For large teams and organizations</p>
-              <div className="text-2xl font-bold mb-6">$299<span className="text-sm text-gray-500 font-normal">/mo</span></div>
+              <p className="text-gray-400 mb-4 flex-1">For consulting firms and corporate red teams.</p>
+              <div className="text-3xl font-bold mb-2">$1,999<span className="text-sm text-gray-400 font-normal"> / lifetime</span></div>
+              <ul className="text-sm space-y-2 mb-6 text-gray-300">
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> Unlimited Machines</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> AI-Powered Payloads</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> White-label Reports</li>
+                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> Lifetime Updates</li>
+              </ul>
               <Button 
                 variant="outline" 
-                className="w-full"
-                onClick={() => handleCheckout('price_enterprise')}
+                className="w-full mt-auto border-gray-600 text-white hover:bg-gray-800 hover:text-white"
+                onClick={() => handleCheckout('price_enterprise', 'enterprise')}
                 disabled={checkoutLoading}
               >
-                Contact Sales
+                Buy Enterprise
               </Button>
             </div>
           </div>
+          
+          {myLicenses.length > 0 && (
+            <div className="mt-10">
+              <h3 className="text-lg font-bold mb-4">My Licenses</h3>
+              <div className="space-y-3">
+                {myLicenses.map(lic => (
+                  <div key={lic.id} className="p-4 border rounded-lg flex justify-between items-center bg-white">
+                    <div>
+                      <div className="font-mono text-sm tracking-wider font-bold">{lic.licenseKey}</div>
+                      <div className="text-xs text-gray-500 mt-1 capitalize">{lic.tier} Edition • Purchased: {new Date(lic.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <Badge className={lic.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                      {lic.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

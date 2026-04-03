@@ -27,6 +27,7 @@ import { jobsRouter as jobsRoutes } from './routes/jobs.js'
 import { domainsRouter as domainsRoutes } from './routes/domains.js'
 import { billingRouter as billingRoutes } from './routes/billing.js'
 import { pdfExportRouter as pdfExportRoutes } from './routes/pdfExport.js'
+import { licenseRouter as licenseRoutes } from './routes/licenses.js'
 import { autonomousService } from './src/services/autonomousService.js'
 
 import { clearAlert, getActiveAlerts, getAlerts } from './monitoring/alerts.js'
@@ -139,6 +140,7 @@ app.use('/api/jobs', jobsRoutes)
 app.use('/api/domains', domainsRoutes)
 app.use('/api/billing', billingRoutes)
 app.use('/api/export', pdfExportRoutes)
+app.use('/api/licenses', licenseRoutes)
 
 app.get('/health', healthCheck)
 app.get('/health/liveness', healthCheck)
