@@ -1,3 +1,4 @@
+import "reflect-metadata"
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { User } from "./User.js"
 
@@ -6,10 +7,10 @@ export class Subscription {
     @PrimaryGeneratedColumn("uuid")
     id: string
 
-    @Column()
+    @Column({ type: "varchar" })
     stripeCustomerId: string
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", nullable: true })
     stripeSubscriptionId: string
 
     @Column({
@@ -19,23 +20,23 @@ export class Subscription {
     })
     status: string
 
-    @Column()
+    @Column({ type: "varchar" })
     planId: string
 
-    @Column({ default: 0 })
+    @Column({ type: "int", default: 0 })
     scanQuota: number
 
-    @Column({ default: 0 })
+    @Column({ type: "int", default: 0 })
     scansUsed: number
 
     @ManyToOne(() => User, user => user.id)
     @JoinColumn({ name: "userId" })
     user: User
 
-    @Column()
+    @Column({ type: "uuid" })
     userId: string
 
-    @Column({ nullable: true })
+    @Column({ type: "timestamp", nullable: true })
     currentPeriodEnd: Date
 
     @CreateDateColumn()

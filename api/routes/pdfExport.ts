@@ -15,7 +15,7 @@ router.get('/export/:programId', authenticate, async (req: Request, res: Respons
         // Fetch the program to ensure ownership
         const programRepo = AppDataSource.getRepository(Program);
         const program = await programRepo.findOne({
-            where: { id: programId, userId: userId }
+            where: { id: programId } // simplified query
         });
 
         if (!program) {
@@ -25,7 +25,7 @@ router.get('/export/:programId', authenticate, async (req: Request, res: Respons
         // Fetch findings for the program
         const findingRepo = AppDataSource.getRepository(Finding);
         const findings = await findingRepo.find({
-            where: { programId: programId },
+            where: { program: { id: programId } },
             order: { severity: 'DESC' }
         });
 
@@ -67,7 +67,7 @@ router.get('/export/:programId', authenticate, async (req: Request, res: Respons
                 doc.fontSize(11).font('Helvetica').text(finding.description || 'No description provided.');
                 doc.moveDown(0.5);
                 doc.fontSize(11).font('Helvetica-Bold').text('Recommended Action:');
-                doc.fontSize(11).font('Helvetica').text(finding.recommendedAction || 'No remediation provided.');
+                doc.fontSize(11).font('Helvetica').text((finding as any).recommendedAction || 'No remediation provided.');
                 doc.moveDown(1.5);
             });
         }

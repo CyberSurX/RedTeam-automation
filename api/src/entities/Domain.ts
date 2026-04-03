@@ -1,3 +1,4 @@
+import "reflect-metadata"
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { User } from "./User.js"
 
@@ -6,7 +7,7 @@ export class Domain {
     @PrimaryGeneratedColumn("uuid")
     id: string
 
-    @Column()
+    @Column({ type: "varchar" })
     domain: string
 
     @Column({
@@ -16,17 +17,17 @@ export class Domain {
     })
     status: "pending" | "verified" | "failed"
 
-    @Column()
+    @Column({ type: "varchar" })
     verificationToken: string
 
     @ManyToOne(() => User, user => user.id)
     @JoinColumn({ name: "userId" })
     user: User
 
-    @Column()
+    @Column({ type: "uuid" })
     userId: string
 
-    @Column({ nullable: true })
+    @Column({ type: "timestamp", nullable: true })
     verifiedAt: Date
 
     @CreateDateColumn()

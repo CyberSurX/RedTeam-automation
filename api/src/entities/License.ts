@@ -1,3 +1,4 @@
+import "reflect-metadata"
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { User } from "./User.js"
 
@@ -6,7 +7,7 @@ export class License {
     @PrimaryGeneratedColumn("uuid")
     id: string
 
-    @Column({ unique: true })
+    @Column({ type: "varchar", unique: true })
     licenseKey: string // e.g. RTA-XXXX-YYYY-ZZZZ
 
     @Column({
@@ -23,17 +24,17 @@ export class License {
     })
     tier: "basic" | "pro" | "enterprise"
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", nullable: true })
     hardwareId: string // Used to lock the license to a specific machine/installation
 
     @ManyToOne(() => User, user => user.id)
     @JoinColumn({ name: "userId" })
     user: User
 
-    @Column({ nullable: true })
+    @Column({ type: "uuid", nullable: true })
     userId: string
 
-    @Column({ nullable: true })
+    @Column({ type: "varchar", nullable: true })
     stripePaymentIntentId: string
 
     @CreateDateColumn()

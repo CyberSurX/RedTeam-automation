@@ -117,3 +117,5 @@ export function authenticateApiKey(req: AuthenticatedRequest, res: Response, nex
   req.headers['x-api-key-validated'] = 'false';
   next();
 }
+
+export const authenticate = authenticateToken;

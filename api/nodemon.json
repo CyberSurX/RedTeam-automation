@@ -4,6 +4,8 @@
   "ignore": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"],
   "exec": "tsc -p api/tsconfig.json && node dist/api/start.js",
   "env": {
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+    "JWT_SECRET": "super_secret_jwt_key_for_testing",
+    "JWT_REFRESH_SECRET": "super_secret_refresh_key_for_testing"
   }
 }

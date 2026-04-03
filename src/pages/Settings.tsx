@@ -70,6 +70,10 @@ export const Settings: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('profile');
 
   // States for new features
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -128,6 +132,8 @@ export const Settings: React.FC = () => {
       setCheckoutLoading(false);
     }
   };
+
+  const fetchSettings = async () => {
     setIsLoading(true);
     try {
       const [profileRes, apiKeysRes] = await Promise.all([
@@ -355,49 +361,17 @@ export const Settings: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Configure API keys, security preferences, and account settings</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImportSettings}
-            className="hidden"
-            id="import-settings"
-          />
-          <label htmlFor="import-settings" className="inline-block">
-            <span className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
-              <Upload className="h-4 w-4 mr-1" />
-              Import
-            </span>
-          </label>
-          <Button variant="outline" size="sm" onClick={handleExportSettings}>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          <Button 
-            onClick={handleSaveSettings} 
-            disabled={!hasChanges}
-            className={hasChanges ? 'bg-green-600 hover:bg-green-700' : ''}
-          >
-            <Save className="h-4 w-4 mr-1" />
-            Save Changes
-          </Button>
-        </div>
-      </div>
-
-      {/* API Keys Section */}
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'api-keys':
+        return (
+          <div className="space-y-6">
+            {/* API Keys Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -490,8 +464,12 @@ export const Settings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Security Settings */}
+      </div>
+    );
+  case 'security':
+    return (
+      <div className="space-y-6">
+        {/* Security Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -545,8 +523,12 @@ export const Settings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* User Profile */}
+      </div>
+    );
+  case 'profile':
+    return (
+      <div className="space-y-6">
+        {/* User Profile */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -614,8 +596,12 @@ export const Settings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Domains Section */}
+      </div>
+    );
+  case 'domains':
+    return (
+      <div className="space-y-6">
+        {/* Domains Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -686,8 +672,12 @@ export const Settings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Billing Section */}
+      </div>
+    );
+  case 'billing':
+    return (
+      <div className="space-y-6">
+        {/* Billing Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -788,7 +778,7 @@ export const Settings: React.FC = () => {
                   <div key={lic.id} className="p-4 border rounded-lg flex justify-between items-center bg-white">
                     <div>
                       <div className="font-mono text-sm tracking-wider font-bold">{lic.licenseKey}</div>
-                      <div className="text-xs text-gray-500 mt-1 capitalize">{lic.tier} Edition • Purchased: {new Date(lic.createdAt).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-500 mt-1 capitalize">{lic.tier} Edition \u2022 Purchased: {new Date(lic.createdAt).toLocaleDateString()}</div>
                     </div>
                     <Badge className={lic.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
                       {lic.status.toUpperCase()}
@@ -800,6 +790,100 @@ export const Settings: React.FC = () => {
           )}
         </CardContent>
       </Card>
+    };
+  }; // <-- End of renderContent() switch
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-500">Manage your account, security, and preferences</p>
+        </div>
+        <Button onClick={handleSaveSettings} disabled={!hasChanges || isLoading}>
+          <Save className="h-4 w-4 mr-2" />
+          Save Changes
+        </Button>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center">
+          <CheckCircle className="h-5 w-5 mr-2" />
+          {successMessage}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="md:col-span-1">
+          <div className="space-y-1 bg-white p-2 rounded-xl border">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'profile'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <User className="h-5 w-5 mr-3" />
+              Profile
+            </button>
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'security'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Shield className="h-5 w-5 mr-3" />
+              Security
+            </button>
+            <button
+              onClick={() => setActiveTab('api-keys')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'api-keys'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Key className="h-5 w-5 mr-3" />
+              API Keys
+            </button>
+            <button
+              onClick={() => setActiveTab('domains')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'domains'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Globe className="h-5 w-5 mr-3" />
+              Domains
+            </button>
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'billing'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <CreditCard className="h-5 w-5 mr-3" />
+              Licenses & Billing
+            </button>
+          </div>
+        </div>
+
+        <div className="md:col-span-3">
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 };
