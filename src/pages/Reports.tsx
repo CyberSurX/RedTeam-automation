@@ -196,7 +196,7 @@ export const Reports: React.FC = () => {
           responseType: 'blob'
         });
         
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const url = window.URL.createObjectURL(new Blob([response.data as any]));
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', `Security_Report_${programId}.pdf`);

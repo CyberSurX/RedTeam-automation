@@ -93,9 +93,9 @@ export const Settings: React.FC = () => {
   const fetchLicenses = async () => {
     try {
       const res = await axios.get('/api/licenses/my-licenses');
-      setMyLicenses(res.data);
-      if (res.data.length > 0) {
-        setActiveLicense(res.data[0]); // Just pick the first one for display
+      setMyLicenses(res.data as any[]);
+      if ((res.data as any[]).length > 0) {
+        setActiveLicense((res.data as any[])[0]); // Just pick the first one for display
       }
     } catch (e) {
       console.error('Failed to load licenses');
@@ -112,8 +112,8 @@ export const Settings: React.FC = () => {
         licenseKey: licenseKey,
         hardwareId: 'web-browser-client'
       });
-      setActiveLicense(res.data);
-      setSuccessMessage(`License verified successfully! Tier: ${res.data.tier}`);
+      setActiveLicense(res.data as any);
+      setSuccessMessage(`License verified successfully! Tier: ${(res.data as any).tier}`);
       fetchLicenses();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid license key');
@@ -126,7 +126,7 @@ export const Settings: React.FC = () => {
     setCheckoutLoading(true);
     try {
       const res = await axios.post('/api/billing/create-checkout-session', { planId, tier });
-      window.location.href = res.data.url;
+      window.location.href = (res.data as any).url;
     } catch (err) {
       alert('Failed to start checkout process. Have you configured Stripe Products?');
       setCheckoutLoading(false);
@@ -322,7 +322,7 @@ export const Settings: React.FC = () => {
     if (!newDomain) return;
     try {
       const res = await axios.post('/api/domains', { domainName: newDomain });
-      setDomains([res.data, ...domains]);
+      setDomains([res.data as Domain, ...domains]);
       setNewDomain('');
       alert('Domain added successfully. Please add the TXT record to verify.');
     } catch (err: any) {
@@ -334,7 +334,7 @@ export const Settings: React.FC = () => {
     setIsVerifying(id);
     try {
       const res = await axios.post(`/api/domains/${id}/verify`);
-      setDomains(domains.map(d => d.id === id ? res.data.domain : d));
+      setDomains(domains.map(d => d.id === id ? (res.data as any).domain : d));
       alert('Domain verified successfully!');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to verify domain');
@@ -353,10 +353,7 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleCheckout = async (planId: string) => {
-    // This function will be replaced by the updated one above
-    // I'm putting it here temporarily so it won't break if old references exist
-  };
+
 
   if (isLoading) {
     return (
@@ -368,7 +365,7 @@ export const Settings: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'api-keys':
+      case 'profile':
         return (
           <div className="space-y-6">
             {/* API Keys Section */}
@@ -466,10 +463,10 @@ export const Settings: React.FC = () => {
       </Card>
       </div>
     );
-  case 'security':
+  case 'api-keys':
     return (
       <div className="space-y-6">
-        {/* Security Settings */}
+        {/* API Keys */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -525,10 +522,10 @@ export const Settings: React.FC = () => {
       </Card>
       </div>
     );
-  case 'profile':
+  case 'security':
     return (
       <div className="space-y-6">
-        {/* User Profile */}
+        {/* Security Profile */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -790,8 +787,11 @@ export const Settings: React.FC = () => {
           )}
         </CardContent>
       </Card>
-    };
-  }; // <-- End of renderContent() switch
+      </div>
+    );
+  } // <-- End of renderContent() switch
+
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -887,3 +887,5 @@ export const Settings: React.FC = () => {
     </div>
   );
 };
+
+export default Settings;
