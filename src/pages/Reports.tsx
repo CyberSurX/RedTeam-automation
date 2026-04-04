@@ -16,8 +16,7 @@ import {
   DollarSign,
   Calendar,
   User,
-  Tag,
-  FileDown
+  Tag
 } from 'lucide-react';
 
 interface Report {
@@ -63,7 +62,6 @@ export const Reports: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPlatform, setFilterPlatform] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const reportTemplates: ReportTemplate[] = [
     {
@@ -191,7 +189,6 @@ export const Reports: React.FC = () => {
     // If it's a real program export
     if (programId) {
       try {
-        setDownloadingId(reportId);
         const response = await axios.get(`/api/export/${programId}`, {
           responseType: 'blob'
         });
@@ -207,8 +204,6 @@ export const Reports: React.FC = () => {
       } catch (error) {
         console.error('Failed to download report', error);
         alert('Failed to download PDF report');
-      } finally {
-        setDownloadingId(null);
       }
     } else {
       // Mock logic for existing UI
@@ -530,7 +525,7 @@ export const Reports: React.FC = () => {
                     )}
                     
                     <div className="flex justify-end space-x-2 mt-4">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleDownload(report.id, report.programId)}>
                         <Download className="h-3 w-3 mr-1" />
                         Export Report
                       </Button>

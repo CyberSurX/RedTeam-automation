@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
   Plus,
@@ -87,27 +85,27 @@ const CreateProgramModal: React.FC<CreateProgramModalProps> = ({ isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Create New Program</h2>
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="glass-card p-6 w-full max-w-md border border-blue-500/30">
+        <h2 className="text-xl font-bold mb-4 text-white">Create New Program</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Program Name</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Program Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="sharp-input w-full px-3 py-2"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Platform</label>
             <select
               value={formData.platform}
               onChange={(e) => setFormData({ ...formData, platform: e.target.value as Program['platform'] })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="sharp-input w-full px-3 py-2"
             >
               <option value="hackerone">HackerOne</option>
               <option value="bugcrowd">Bugcrowd</option>
@@ -118,46 +116,46 @@ const CreateProgramModal: React.FC<CreateProgramModalProps> = ({ isOpen, onClose
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Program URL</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Program URL</label>
             <input
               type="url"
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="sharp-input w-full px-3 py-2"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scope (one per line)</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Scope (one per line)</label>
             <textarea
               value={formData.scope}
               onChange={(e) => setFormData({ ...formData, scope: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="sharp-input w-full px-3 py-2"
               rows={3}
               placeholder="*.example.com&#10;api.example.com&#10;app.example.com"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center">
+            <label className="flex items-center text-slate-300">
               <input
                 type="checkbox"
                 checked={formData.isAutomated}
                 onChange={(e) => setFormData({ ...formData, isAutomated: e.target.checked })}
-                className="mr-2"
+                className="mr-2 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
               />
               <span className="text-sm">Enable Automation</span>
             </label>
 
             {formData.isAutomated && (
-              <div className="ml-6 space-y-2">
+              <div className="ml-6 space-y-2 text-slate-400">
                 <label className="flex items-center">
                   <input
                     type="checkbox"
                     checked={formData.autoRecon}
                     onChange={(e) => setFormData({ ...formData, autoRecon: e.target.checked })}
-                    className="mr-2"
+                    className="mr-2 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                   <span className="text-sm">Auto Reconnaissance</span>
                 </label>
@@ -166,7 +164,7 @@ const CreateProgramModal: React.FC<CreateProgramModalProps> = ({ isOpen, onClose
                     type="checkbox"
                     checked={formData.autoScan}
                     onChange={(e) => setFormData({ ...formData, autoScan: e.target.checked })}
-                    className="mr-2"
+                    className="mr-2 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                   <span className="text-sm">Auto Vulnerability Scanning</span>
                 </label>
@@ -175,7 +173,7 @@ const CreateProgramModal: React.FC<CreateProgramModalProps> = ({ isOpen, onClose
                     type="checkbox"
                     checked={formData.autoReport}
                     onChange={(e) => setFormData({ ...formData, autoReport: e.target.checked })}
-                    className="mr-2"
+                    className="mr-2 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900"
                   />
                   <span className="text-sm">Auto Report Generation</span>
                 </label>
@@ -184,12 +182,12 @@ const CreateProgramModal: React.FC<CreateProgramModalProps> = ({ isOpen, onClose
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <button type="button" className="sharp-btn-outline px-4 py-2" onClick={onClose}>
               Cancel
-            </Button>
-            <Button type="submit">
+            </button>
+            <button type="submit" className="sharp-btn px-4 py-2">
               Create Program
-            </Button>
+            </button>
           </div>
         </form>
       </div>
@@ -293,17 +291,6 @@ export const Programs: React.FC = () => {
     }
   };
 
-  const getPlatformIcon = (platform: string) => {
-    const icons: Record<string, string> = {
-      hackerone: 'https://www.google.com/s2/favicons?domain=hackerone.com&sz=64',
-      bugcrowd: 'https://www.google.com/s2/favicons?domain=bugcrowd.com&sz=64',
-      yeswehack: 'https://www.google.com/s2/favicons?domain=yeswehack.com&sz=64',
-      intigriti: 'https://www.google.com/s2/favicons?domain=intigriti.com&sz=64',
-      custom: 'https://www.google.com/s2/favicons?domain=github.com&sz=64'
-    };
-    return icons[platform.toLowerCase()] || icons.custom;
-  };
-
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       active: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -326,74 +313,73 @@ export const Programs: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Programs</h1>
-          <p className="text-gray-600 mt-1">Manage your bug bounty programs</p>
+          <h1 className="text-3xl font-bold text-white">Programs</h1>
+          <p className="text-slate-400 mt-1">Manage your bug bounty programs</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <button onClick={() => setIsModalOpen(true)} className="sharp-btn flex items-center px-4 py-2">
           <Plus className="h-4 w-4 mr-2" />
           Add Program
-        </Button>
+        </button>
       </div>
 
       {/* Programs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {programs.map((program) => (
-          <Card key={program.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <div key={program.id} className="glass-card hover:shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all">
+            <div className="p-6 border-b border-slate-800/50">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{program.name}</CardTitle>
-                <div className="flex space-x-2">
-                  <img src={getPlatformIcon(program.platform)} alt={program.platform} className="w-5 h-5" />
+                <h3 className="text-lg font-bold text-white">{program.name}</h3>
+                <div className="flex items-center space-x-2">
                   <Badge className={getStatusColor(program.status)}>
                     {program.status}
                   </Badge>
                 </div>
               </div>
-              <CardDescription className="flex items-center mt-2">
+              <p className="flex items-center mt-2 text-sm text-blue-400">
                 <Globe className="h-4 w-4 mr-1" />
                 {program.url}
-              </CardDescription>
-            </CardHeader>
+              </p>
+            </div>
             
-            <CardContent>
+            <div className="p-6">
               <div className="space-y-4">
                 {/* Scope */}
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Scope</h4>
+                  <h4 className="text-sm font-medium text-slate-400 mb-2">Scope</h4>
                   <div className="space-y-1">
                     {program.scope.slice(0, 3).map((item, index) => (
-                      <div key={index} className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1">
+                      <div key={index} className="text-xs text-slate-300 bg-slate-800/50 border border-slate-700/50 rounded px-2 py-1">
                         {item}
                       </div>
                     ))}
                     {program.scope.length > 3 && (
-                      <div className="text-xs text-gray-500">+{program.scope.length - 3} more</div>
+                      <div className="text-xs text-slate-500">+{program.scope.length - 3} more</div>
                     )}
                   </div>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 py-2 border-y border-slate-800/50">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{program.totalFindings}</div>
-                    <div className="text-xs text-gray-500">Total Findings</div>
+                    <div className="text-2xl font-bold text-white">{program.totalFindings}</div>
+                    <div className="text-xs text-slate-500">Total Findings</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">{program.criticalFindings}</div>
-                    <div className="text-xs text-gray-500">Critical</div>
+                    <div className="text-2xl font-bold text-red-400">{program.criticalFindings}</div>
+                    <div className="text-xs text-slate-500">Critical</div>
                   </div>
                 </div>
 
                 {/* Automation Status */}
                 {program.isAutomated && (
-                  <div className="flex items-center justify-center space-x-2 text-xs text-green-600">
+                  <div className="flex items-center justify-center space-x-2 text-xs text-green-400">
                     <CheckCircle className="h-3 w-3" />
                     <span>Automation Enabled</span>
                   </div>
                 )}
 
                 {/* Last Scan */}
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-slate-500">
                   <span className="flex items-center">
                     <Clock className="h-3 w-3 mr-1" />
                     Last scan: {new Date(program.lastScan).toLocaleDateString()}
@@ -402,30 +388,26 @@ export const Programs: React.FC = () => {
 
                 {/* Actions */}
                 <div className="flex space-x-2 pt-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <button 
                     onClick={() => handleToggleStatus(program.id)}
-                    className="flex-1"
+                    className="flex-1 sharp-btn-outline flex items-center justify-center py-2"
                   >
                     {program.status === 'active' ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
                     {program.status === 'active' ? 'Pause' : 'Resume'}
-                  </Button>
-                  <Button size="sm" variant="outline" className="p-2">
-                    <Settings className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  </button>
+                  <button className="sharp-btn-outline p-2">
+                    <Settings className="h-4 w-4" />
+                  </button>
+                  <button 
                     onClick={() => handleDeleteProgram(program.id)}
-                    className="p-2 text-red-600 hover:text-red-700"
+                    className="p-2 text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors"
                   >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 

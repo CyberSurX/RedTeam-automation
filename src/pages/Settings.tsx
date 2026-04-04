@@ -1,23 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+
 import { Badge } from '../components/ui/badge';
-import {
-  Key,
-  Shield,
-  Save,
-  RefreshCw,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  XCircle,
-  Download,
-  Upload,
-  User,
-  CreditCard,
-  Globe
-} from 'lucide-react';
+import { Save, User, Shield, Key, Globe, CreditCard, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 
 interface APIKey {
   id: string;
@@ -28,15 +13,6 @@ interface APIKey {
   createdAt: string;
   lastUsed?: string;
   permissions: string[];
-}
-
-interface SecuritySetting {
-  id: string;
-  name: string;
-  description: string;
-  value: boolean | string;
-  type: 'boolean' | 'select' | 'number';
-  options?: string[];
 }
 
 interface UserProfile {
@@ -58,7 +34,6 @@ interface Domain {
 
 export const Settings: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
-  const [securitySettings, setSecuritySettings] = useState<SecuritySetting[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: '',
     email: '',
@@ -161,16 +136,6 @@ export const Settings: React.FC = () => {
         permissions: k.permissions || []
       })));
 
-      const sec = profile.preferences?.security || {};
-      setSecuritySettings([
-        { id: '1', name: 'Enable Two-Factor Authentication', description: 'Require 2FA for all user accounts', value: sec.twoFactorEnabled ?? false, type: 'boolean' },
-        { id: '2', name: 'Session Timeout', description: 'Auto-logout after inactivity (minutes)', value: String(sec.sessionTimeout ?? 30), type: 'select', options: ['15', '30', '60', '120'] },
-        { id: '3', name: 'Max Login Attempts', description: 'Maximum failed login attempts before lockout', value: String(sec.maxLoginAttempts ?? 5), type: 'number' },
-        { id: '4', name: 'API Rate Limiting', description: 'Enable rate limiting for API endpoints', value: sec.rateLimiting ?? true, type: 'boolean' },
-        { id: '5', name: 'Data Encryption', description: 'Encrypt sensitive data at rest', value: sec.dataEncryption ?? true, type: 'boolean' },
-        { id: '6', name: 'Audit Logging', description: 'Enable comprehensive audit logging', value: sec.auditLogging ?? true, type: 'boolean' }
-      ]);
-
       // Also fetch domains
       const domainRes = await axios.get('/api/domains').catch(() => ({ data: [] }));
       setDomains(domainRes.data || []);
@@ -217,15 +182,6 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleSecuritySettingChange = (id: string, value: boolean | string) => {
-    setSecuritySettings(securitySettings.map(setting => 
-      setting.id === id 
-        ? { ...setting, value }
-        : setting
-    ));
-    setHasChanges(true);
-  };
-
   const handleProfileUpdate = (field: keyof UserProfile, value: string | boolean) => {
     setUserProfile({ ...userProfile, [field]: value });
     setHasChanges(true);
@@ -235,13 +191,7 @@ export const Settings: React.FC = () => {
     setIsLoading(true);
     try {
       await axios.put('/api/settings/profile', { name: userProfile.name, email: userProfile.email });
-      const sec = securitySettings.reduce((acc, s) => {
-        if (s.type === 'boolean') acc[s.name.replace(/\s+/g, '').toLowerCase()] = s.value;
-        else if (s.name.includes('Timeout')) acc['sessionTimeout'] = Number(s.value);
-        else if (s.name.includes('Login')) acc['maxLoginAttempts'] = Number(s.value);
-        return acc;
-      }, {} as Record<string, unknown>);
-      await axios.put('/api/settings/security', sec);
+      
       setHasChanges(false);
       alert('Settings saved successfully!');
     } catch (error) {
@@ -249,45 +199,6 @@ export const Settings: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleExportSettings = () => {
-    const settings = {
-      apiKeys: apiKeys.map(key => ({ ...key, key: '***' })),
-      securitySettings,
-      userProfile,
-      exportedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `settings-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportSettings = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const settings = JSON.parse(e.target?.result as string);
-        if (settings.apiKeys) setApiKeys(settings.apiKeys);
-        if (settings.securitySettings) setSecuritySettings(settings.securitySettings);
-        if (settings.userProfile) setUserProfile(settings.userProfile);
-        setHasChanges(true);
-        alert('Settings imported successfully!');
-      } catch {
-        alert('Invalid settings file');
-      }
-    };
-    reader.readAsText(file);
   };
 
   const getPlatformIcon = (platform: string) => {
@@ -368,452 +279,291 @@ export const Settings: React.FC = () => {
       case 'profile':
         return (
           <div className="space-y-6">
-            {/* API Keys Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Key className="h-5 w-5 mr-2" />
-            API Keys
-          </CardTitle>
-          <CardDescription>Manage API keys for bug bounty platforms</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Add New API Key */}
-          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <h3 className="font-medium mb-3">Add New API Key</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <input
-                type="text"
-                placeholder="Key Name"
-                value={newApiKey.name}
-                onChange={(e) => setNewApiKey({ ...newApiKey, name: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <select
-                value={newApiKey.platform}
-                onChange={(e) => setNewApiKey({ ...newApiKey, platform: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Platform</option>
-                <option value="hackerone">HackerOne</option>
-                <option value="bugcrowd">Bugcrowd</option>
-                <option value="yeswehack">YesWeHack</option>
-                <option value="intigriti">Intigriti</option>
-                <option value="custom">Custom</option>
-              </select>
-              <input
-                type="password"
-                placeholder="API Key"
-                value={newApiKey.key}
-                onChange={(e) => setNewApiKey({ ...newApiKey, key: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Button onClick={handleAddApiKey}>
-                <Key className="h-4 w-4 mr-1" />
-                Add Key
-              </Button>
-            </div>
-          </div>
-
-          {/* Existing API Keys */}
-          <div className="space-y-3">
-            {apiKeys.map((key) => (
-              <div key={key.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="text-2xl">{getPlatformIcon(key.platform)}</div>
-                  <div>
-                    <div className="font-medium">{key.name}</div>
-                    <div className="text-sm text-gray-500 capitalize">{key.platform}</div>
-                    <div className="text-xs text-gray-400">
-                      Created: {new Date(key.createdAt).toLocaleDateString()}
-                      {key.lastUsed && ` • Last used: ${new Date(key.lastUsed).toLocaleDateString()}`}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className={getStatusColor(key.status)}>
-                    {key.status.toUpperCase()}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowApiKey(showApiKey === key.id ? null : key.id)}
-                  >
-                    {showApiKey === key.id ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleToggleApiKey(key.id)}
-                  >
-                    {key.status === 'active' ? <XCircle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteApiKey(key.id)}
-                  >
-                    <XCircle className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      </div>
-    );
-  case 'api-keys':
-    return (
-      <div className="space-y-6">
-        {/* API Keys */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Shield className="h-5 w-5 mr-2" />
-            Security Settings
-          </CardTitle>
-          <CardDescription>Configure security preferences and access controls</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {securitySettings.map((setting) => (
-              <div key={setting.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium">{setting.name}</div>
-                  <div className="text-sm text-gray-500">{setting.description}</div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {setting.type === 'boolean' && (
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={setting.value as boolean}
-                        onChange={(e) => handleSecuritySettingChange(setting.id, e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  )}
-                  {setting.type === 'select' && (
-                    <select
-                      value={setting.value as string}
-                      onChange={(e) => handleSecuritySettingChange(setting.id, e.target.value)}
-                      className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {setting.options?.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  )}
-                  {setting.type === 'number' && (
-                    <input
-                      type="number"
-                      value={setting.value as string}
-                      onChange={(e) => handleSecuritySettingChange(setting.id, e.target.value)}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      </div>
-    );
-  case 'security':
-    return (
-      <div className="space-y-6">
-        {/* Security Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <User className="h-5 w-5 mr-2" />
-            Profile Settings
-          </CardTitle>
-          <CardDescription>Manage your account and preferences</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={userProfile.name}
-                  onChange={(e) => handleProfileUpdate('name', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={userProfile.email}
-                  onChange={(e) => handleProfileUpdate('email', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="glass-card p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                <User className="h-5 w-5 mr-2 text-blue-400" />
+                Profile Information
+              </h2>
+              <div className="space-y-4 max-w-md">
                 <div>
-                  <div className="font-medium">Two-Factor Authentication</div>
-                  <div className="text-sm text-gray-500">Add an extra layer of security to your account</div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                  <input type="text" className="sharp-input w-full px-3 py-2" defaultValue={userProfile.name || ''} onChange={(e) => handleProfileUpdate('name', e.target.value)} />
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={userProfile.twoFactorEnabled}
-                    onChange={(e) => handleProfileUpdate('twoFactorEnabled', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                  <input type="email" className="sharp-input w-full px-3 py-2" defaultValue={userProfile.email || ''} onChange={(e) => handleProfileUpdate('email', e.target.value)} />
+                </div>
               </div>
+            </div>
+          </div>
+        );
+      case 'api-keys':
+        return (
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center">
+                  <Key className="h-5 w-5 mr-2 text-blue-400" />
+                  API Keys
+                </h2>
+                <button className="sharp-btn px-4 py-2 text-sm" onClick={handleAddApiKey}>Add Key</button>
+              </div>
+              <p className="text-slate-400 mb-4">Manage API keys for bug bounty platforms</p>
               
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">Email Notifications</div>
-                  <div className="text-sm text-gray-500">Receive email updates about new findings and reports</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+              <div className="mb-6 p-4 border border-slate-700/50 rounded-lg bg-slate-900/50">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <input
-                    type="checkbox"
-                    checked={userProfile.notificationsEnabled}
-                    onChange={(e) => handleProfileUpdate('notificationsEnabled', e.target.checked)}
-                    className="sr-only peer"
+                    type="text"
+                    placeholder="Key Name"
+                    value={newApiKey.name}
+                    onChange={(e) => setNewApiKey({ ...newApiKey, name: e.target.value })}
+                    className="sharp-input px-3 py-2"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      </div>
-    );
-  case 'domains':
-    return (
-      <div className="space-y-6">
-        {/* Domains Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Globe className="h-5 w-5 mr-2" />
-            Domains
-          </CardTitle>
-          <CardDescription>Manage and verify your domains</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <h3 className="font-medium mb-3">Add New Domain</h3>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                placeholder="example.com"
-                value={newDomain}
-                onChange={(e) => setNewDomain(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Button onClick={handleAddDomain}>
-                Add Domain
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {domains.map((domain) => (
-              <div key={domain.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <div className="font-medium">{domain.domain}</div>
-                  <div className="text-sm text-gray-500">
-                    Added: {new Date(domain.createdAt).toLocaleDateString()}
-                  </div>
-                  {domain.status === 'pending' && (
-                    <div className="text-xs mt-1 p-2 bg-yellow-50 text-yellow-800 rounded border border-yellow-200 break-all">
-                      Add TXT record: <code>{domain.verificationToken}</code>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className={
-                    domain.status === 'verified' ? 'bg-green-100 text-green-800' :
-                    domain.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }>
-                    {domain.status.toUpperCase()}
-                  </Badge>
-                  {domain.status === 'pending' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleVerifyDomain(domain.id)}
-                      disabled={isVerifying === domain.id}
-                    >
-                      {isVerifying === domain.id ? 'Verifying...' : 'Verify'}
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteDomain(domain.id)}
+                  <select
+                    value={newApiKey.platform}
+                    onChange={(e) => setNewApiKey({ ...newApiKey, platform: e.target.value })}
+                    className="sharp-input px-3 py-2"
                   >
-                    <XCircle className="h-4 w-4" />
-                  </Button>
+                    <option value="">Select Platform</option>
+                    <option value="hackerone">HackerOne</option>
+                    <option value="bugcrowd">Bugcrowd</option>
+                    <option value="yeswehack">YesWeHack</option>
+                    <option value="intigriti">Intigriti</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <input
+                    type="password"
+                    placeholder="API Key"
+                    value={newApiKey.key}
+                    onChange={(e) => setNewApiKey({ ...newApiKey, key: e.target.value })}
+                    className="sharp-input px-3 py-2"
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      </div>
-    );
-  case 'billing':
-    return (
-      <div className="space-y-6">
-        {/* Billing Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <CreditCard className="h-5 w-5 mr-2" />
-            Licenses & Billing
-          </CardTitle>
-          <CardDescription>Purchase and manage your one-time software licenses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-8 p-6 bg-slate-50 border rounded-lg">
-            <h3 className="text-lg font-bold mb-2">Activate Existing License</h3>
-            <p className="text-sm text-gray-500 mb-4">Enter your license key below to unlock features.</p>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                placeholder="RTA-XXXX-YYYY-ZZZZ"
-                value={licenseKey}
-                onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase tracking-widest"
-              />
-              <Button onClick={handleVerifyLicense} disabled={loading || !licenseKey}>
-                {loading ? 'Verifying...' : 'Activate'}
-              </Button>
-            </div>
-            {activeLicense && (
-              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-green-800 flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Active License Found: <strong className="ml-2 capitalize">{activeLicense.tier} Tier</strong>
-              </div>
-            )}
-          </div>
 
-          <h3 className="text-lg font-bold mb-4">Purchase Lifetime License</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 border rounded-lg flex flex-col">
-              <h3 className="text-lg font-bold mb-2">Basic</h3>
-              <p className="text-gray-500 mb-4 flex-1">Perfect for independent security researchers.</p>
-              <div className="text-3xl font-bold mb-2">$149<span className="text-sm text-gray-500 font-normal"> / lifetime</span></div>
-              <ul className="text-sm space-y-2 mb-6">
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Single Machine License</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Basic Web Scans</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> HTML Reports</li>
-              </ul>
-              <Button 
-                variant="outline" 
-                className="w-full mt-auto"
-                onClick={() => handleCheckout('price_basic', 'basic')}
-                disabled={checkoutLoading}
-              >
-                Buy Basic
-              </Button>
-            </div>
-            <div className="p-6 border rounded-lg border-blue-500 relative flex flex-col shadow-sm">
-              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg font-bold">Recommended</div>
-              <h3 className="text-lg font-bold mb-2 text-blue-700">Pro</h3>
-              <p className="text-gray-500 mb-4 flex-1">The standard for professional penetration testers.</p>
-              <div className="text-3xl font-bold mb-2 text-blue-700">$499<span className="text-sm text-gray-500 font-normal"> / lifetime</span></div>
-              <ul className="text-sm space-y-2 mb-6">
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Up to 3 Machines</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> Deep Network Scans</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> PDF Export</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-green-500"/> 1 Year Updates</li>
-              </ul>
-              <Button 
-                className="w-full mt-auto bg-blue-600 hover:bg-blue-700"
-                onClick={() => handleCheckout('price_pro', 'pro')}
-                disabled={checkoutLoading}
-              >
-                Buy Pro
-              </Button>
-            </div>
-            <div className="p-6 border rounded-lg flex flex-col bg-gray-900 text-white">
-              <h3 className="text-lg font-bold mb-2">Enterprise</h3>
-              <p className="text-gray-400 mb-4 flex-1">For consulting firms and corporate red teams.</p>
-              <div className="text-3xl font-bold mb-2">$1,999<span className="text-sm text-gray-400 font-normal"> / lifetime</span></div>
-              <ul className="text-sm space-y-2 mb-6 text-gray-300">
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> Unlimited Machines</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> AI-Powered Payloads</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> White-label Reports</li>
-                <li className="flex items-center"><CheckCircle className="h-4 w-4 mr-2 text-blue-400"/> Lifetime Updates</li>
-              </ul>
-              <Button 
-                variant="outline" 
-                className="w-full mt-auto border-gray-600 text-white hover:bg-gray-800 hover:text-white"
-                onClick={() => handleCheckout('price_enterprise', 'enterprise')}
-                disabled={checkoutLoading}
-              >
-                Buy Enterprise
-              </Button>
-            </div>
-          </div>
-          
-          {myLicenses.length > 0 && (
-            <div className="mt-10">
-              <h3 className="text-lg font-bold mb-4">My Licenses</h3>
               <div className="space-y-3">
-                {myLicenses.map(lic => (
-                  <div key={lic.id} className="p-4 border rounded-lg flex justify-between items-center bg-white">
-                    <div>
-                      <div className="font-mono text-sm tracking-wider font-bold">{lic.licenseKey}</div>
-                      <div className="text-xs text-gray-500 mt-1 capitalize">{lic.tier} Edition \u2022 Purchased: {new Date(lic.createdAt).toLocaleDateString()}</div>
+                {apiKeys.map((key) => (
+                  <div key={key.id} className="flex items-center justify-between p-4 border border-slate-700/50 bg-slate-900/30 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">{getPlatformIcon(key.platform)}</div>
+                      <div>
+                        <div className="font-medium text-white">{key.name}</div>
+                        <div className="text-sm text-slate-400 capitalize">{key.platform}</div>
+                        <div className="text-xs text-slate-500">
+                          Created: {new Date(key.createdAt).toLocaleDateString()}
+                          {key.lastUsed && ` • Last used: ${new Date(key.lastUsed).toLocaleDateString()}`}
+                        </div>
+                      </div>
                     </div>
-                    <Badge className={lic.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                      {lic.status.toUpperCase()}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={getStatusColor(key.status)}>
+                        {key.status.toUpperCase()}
+                      </Badge>
+                      <button
+                        onClick={() => setShowApiKey(showApiKey === key.id ? null : key.id)}
+                        className="sharp-btn-outline p-2 text-sm"
+                      >
+                        {showApiKey === key.id ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </button>
+                      <button
+                        onClick={() => handleToggleApiKey(key.id)}
+                        className="sharp-btn-outline p-2 text-sm"
+                      >
+                        {key.status === 'active' ? <XCircle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteApiKey(key.id)}
+                        className="p-2 text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
-    );
-  } // <-- End of renderContent() switch
+          </div>
+        );
+      case 'domains':
+        return (
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                <Globe className="h-5 w-5 mr-2 text-blue-400" />
+                Domain Verification
+              </h2>
+              <p className="text-slate-400 mb-4 text-sm">Verify ownership of domains before scanning.</p>
+              
+              <div className="flex gap-3 mb-6">
+                <input
+                  type="text"
+                  placeholder="example.com"
+                  value={newDomain}
+                  onChange={(e) => setNewDomain(e.target.value)}
+                  className="sharp-input flex-1 px-3 py-2"
+                />
+                <button onClick={handleAddDomain} className="sharp-btn px-4 py-2">Add Domain</button>
+              </div>
 
+              <div className="space-y-3">
+                {domains.map(domain => (
+                  <div key={domain.id} className="p-4 bg-slate-900/50 border border-slate-700/50 rounded-lg flex justify-between items-center">
+                    <div>
+                      <div className="font-medium text-white">{domain.domain}</div>
+                      <div className="text-xs text-slate-400 font-mono mt-1">TXT: {domain.verificationToken}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge className={domain.status === 'verified' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}>
+                        {domain.status}
+                      </Badge>
+                      {domain.status !== 'verified' && (
+                        <button
+                          onClick={() => handleVerifyDomain(domain.id)}
+                          disabled={isVerifying === domain.id}
+                          className="sharp-btn-outline px-3 py-1 text-sm"
+                        >
+                          {isVerifying === domain.id ? 'Verifying...' : 'Verify Now'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteDomain(domain.id)}
+                        className="p-2 text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {domains.length === 0 && (
+                  <div className="text-center p-4 text-slate-500 border border-dashed border-slate-700 rounded">
+                    No domains added yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 'billing':
+        return (
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                <CreditCard className="h-5 w-5 mr-2 text-blue-400" />
+                Licenses & Billing
+              </h2>
+              <p className="text-slate-400 mb-6">Purchase and manage your one-time software licenses</p>
+              
+              <div className="mb-8 p-6 glass-card border border-blue-500/20 bg-blue-900/10">
+                <h3 className="text-lg font-bold mb-2 text-white">Activate Existing License</h3>
+                <p className="text-sm text-slate-400 mb-4">Enter your license key below to unlock features.</p>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="RTA-XXXX-YYYY-ZZZZ"
+                    value={licenseKey}
+                    onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
+                    className="sharp-input flex-1 px-4 py-2 uppercase tracking-widest"
+                  />
+                  <button className="sharp-btn px-6" onClick={handleVerifyLicense} disabled={loading || !licenseKey}>
+                    {loading ? 'Verifying...' : 'Activate'}
+                  </button>
+                </div>
+                {activeLicense && (
+                  <div className="mt-4 p-3 bg-green-900/30 border border-green-500/50 rounded text-green-400 flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Active License Found: <strong className="ml-2 capitalize text-green-300">{activeLicense.tier} Tier</strong>
+                  </div>
+                )}
+              </div>
+
+              <h3 className="text-lg font-bold mb-4 text-white">Purchase Lifetime License</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 glass-card relative flex flex-col shadow-[0_0_15px_rgba(37,99,235,0.2)] hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] transition-all">
+                  <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg font-bold">Popular</div>
+                  <h3 className="text-xl font-bold mb-2 text-blue-400">Pro</h3>
+                  <p className="text-slate-400 mb-4 flex-1">The standard for professional penetration testers.</p>
+                  <div className="text-4xl font-bold mb-2 text-white">$499<span className="text-sm text-slate-400 font-normal"> / lifetime</span></div>
+                  <ul className="text-sm space-y-3 mb-8 mt-4 text-slate-300">
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-blue-500"/> Up to 3 Machines</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-blue-500"/> Deep Network Scans</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-blue-500"/> PDF Export</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-blue-500"/> 1 Year Updates</li>
+                  </ul>
+                  <button 
+                    className="sharp-btn w-full mt-auto py-3"
+                    onClick={() => handleCheckout('price_pro', 'pro')}
+                    disabled={checkoutLoading}
+                  >
+                    Buy Pro
+                  </button>
+                </div>
+                <div className="p-6 glass-card flex flex-col shadow-[0_0_15px_rgba(79,70,229,0.2)] hover:shadow-[0_0_25px_rgba(79,70,229,0.4)] transition-all">
+                  <h3 className="text-xl font-bold mb-2 text-indigo-400">Enterprise</h3>
+                  <p className="text-slate-400 mb-4 flex-1">For consulting firms and corporate red teams.</p>
+                  <div className="text-4xl font-bold mb-2 text-white">$1,899<span className="text-sm text-slate-400 font-normal"> / lifetime</span></div>
+                  <ul className="text-sm space-y-3 mb-8 mt-4 text-slate-300">
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-indigo-500"/> Unlimited Machines</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-indigo-500"/> AI-Powered Payloads</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-indigo-500"/> White-label Reports</li>
+                    <li className="flex items-center"><CheckCircle className="h-5 w-5 mr-2 text-indigo-500"/> Lifetime Updates</li>
+                  </ul>
+                  <button 
+                    className="sharp-btn-outline w-full mt-auto py-3"
+                    onClick={() => handleCheckout('price_enterprise', 'enterprise')}
+                    disabled={checkoutLoading}
+                  >
+                    Buy Enterprise
+                  </button>
+                </div>
+              </div>
+
+              {myLicenses.length > 0 && (
+                <div className="mt-10">
+                  <h3 className="text-lg font-bold mb-4 text-white">My Licenses</h3>
+                  <div className="space-y-3">
+                    {myLicenses.map(lic => (
+                      <div key={lic.id} className="p-4 glass-card flex justify-between items-center">
+                        <div>
+                          <div className="font-mono text-sm tracking-wider font-bold text-blue-300">{lic.licenseKey}</div>
+                          <div className="text-xs text-slate-400 mt-1 capitalize">{lic.tier} Edition • Purchased: {new Date(lic.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <div className="px-3 py-1 rounded-full text-xs font-medium border bg-green-900/30 text-green-400 border-green-500/30">
+                          {lic.status.toUpperCase()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500">Manage your account, security, and preferences</p>
+          <h1 className="text-2xl font-bold text-white">Settings</h1>
+          <p className="text-slate-400">Manage your account, security, and preferences</p>
         </div>
-        <Button onClick={handleSaveSettings} disabled={!hasChanges || isLoading}>
+        <button onClick={handleSaveSettings} disabled={!hasChanges || isLoading} className="sharp-btn px-4 py-2 flex items-center">
           <Save className="h-4 w-4 mr-2" />
           Save Changes
-        </Button>
+        </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md border border-red-200">
+        <div className="mb-4 p-4 bg-red-900/30 text-red-400 rounded-md border border-red-500/30">
           {error}
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center">
+        <div className="mb-4 p-4 bg-green-900/30 text-green-400 rounded-md border border-green-500/30 flex items-center">
           <CheckCircle className="h-5 w-5 mr-2" />
           {successMessage}
         </div>
@@ -821,13 +571,13 @@ export const Settings: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="md:col-span-1">
-          <div className="space-y-1 bg-white p-2 rounded-xl border">
+          <div className="space-y-1 glass-card p-2">
             <button
               onClick={() => setActiveTab('profile')}
               className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'profile'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
               }`}
             >
               <User className="h-5 w-5 mr-3" />
@@ -837,8 +587,8 @@ export const Settings: React.FC = () => {
               onClick={() => setActiveTab('security')}
               className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'security'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
               }`}
             >
               <Shield className="h-5 w-5 mr-3" />
@@ -848,8 +598,8 @@ export const Settings: React.FC = () => {
               onClick={() => setActiveTab('api-keys')}
               className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'api-keys'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
               }`}
             >
               <Key className="h-5 w-5 mr-3" />
@@ -859,8 +609,8 @@ export const Settings: React.FC = () => {
               onClick={() => setActiveTab('domains')}
               className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'domains'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
               }`}
             >
               <Globe className="h-5 w-5 mr-3" />
@@ -870,8 +620,8 @@ export const Settings: React.FC = () => {
               onClick={() => setActiveTab('billing')}
               className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'billing'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
               }`}
             >
               <CreditCard className="h-5 w-5 mr-3" />
