@@ -17,11 +17,11 @@ COPY package*.json ./
 # api/package.json does not exist; dependencies are in root package.json
 
 # Install production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # ── Development Stage ─────────────────────────────────────────
 FROM base AS development
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 COPY . .
 ENV PORT=3001
 EXPOSE 3001
@@ -40,7 +40,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --chown=redteam:nodejs . .
 
 # Install dev dependencies for build, then remove them
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Build TypeScript backend
 RUN npx tsc -p api/tsconfig.json
