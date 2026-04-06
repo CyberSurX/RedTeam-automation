@@ -1,5 +1,5 @@
 import React from "react";
-import { cn } from "../../lib/utils";
+import { cn } from "@/lib/utils";
 
 type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   variant?: "default" | "success" | "warning" | "destructive" | "outline" | "secondary";
