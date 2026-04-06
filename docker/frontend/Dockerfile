@@ -25,7 +25,7 @@ CMD ["dumb-init", "npm", "run", "dev"]
 FROM base AS build
 RUN npm ci && npm cache clean --force
 COPY . .
-RUN npm run build
+RUN npm run build:frontend
 
 # Production stage
 FROM nginx:alpine AS production
