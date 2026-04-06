@@ -46,6 +46,7 @@ const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000'
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:5173',
   'https://redteam-automation.vercel.app',
   corsOrigin
 ].filter(Boolean)
