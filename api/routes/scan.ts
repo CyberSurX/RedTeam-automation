@@ -159,6 +159,16 @@ router.post('/report/:missionId', async (req: Request, res: Response): Promise<v
 router.post('/abort/:missionId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { missionId } = req.params;
+
+    // Validate missionId to prevent misuse of the internal request path
+    const missionIdPattern = /^[A-Za-z0-9_-]+$/;
+    if (!missionId || !missionIdPattern.test(missionId)) {
+      res.status(400).json({
+        error: 'Invalid missionId',
+      });
+      return;
+    }
+
     const response = await axios.post(
       `${PYTHON_GATEWAY_URL}/api/v1/missions/${missionId}/abort`,
       {},
