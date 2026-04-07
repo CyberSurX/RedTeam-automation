@@ -7,7 +7,7 @@
   "license": "Proprietary",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev": "npm run kill-ports && concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "vite",
     "dev:backend": "nodemon --config api/nodemon.json",
     "build": "npm run build:frontend && npm run build:backend",
@@ -27,6 +27,7 @@
     "services:up": "docker compose up -d database redis",
     "services:down": "docker compose down",
     "services:reset": "docker compose down -v && docker compose up -d database redis",
+    "kill-ports": "lsof -ti:3001 -ti:5173 -ti:5174 | xargs kill -9 2>/dev/null || true",
     "db:migrate": "echo 'Using TypeORM for migrations'",
     "db:seed": "echo 'Using TypeORM for seeding'"
   },
