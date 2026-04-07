@@ -22,7 +22,7 @@ export const AppDataSource = new DataSource({
     database: process.env.POSTGRES_DB || "redteam_automation",
     synchronize: process.env.NODE_ENV !== "production",
     logging: process.env.NODE_ENV !== "production",
-    entities: [User, Program, Finding, Report, Mission, TaskResult, ScopeAgreement, AgentHealth, AuditLog, Job, JobLog, ApiKey, Domain, Subscription, License],
+    entities: [User, Program, Finding, Report, Mission, TaskResult, ScopeAgreement, AgentHealth, AuditLog, Job, JobLog, ApiKey],
     migrations: [],
     subscribers: [],
 })
