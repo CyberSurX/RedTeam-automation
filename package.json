@@ -24,9 +24,9 @@
     "test:unit": "vitest run --reporter=verbose",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:security": "node scripts/security-test.js",
-    "services:up": "docker compose up -d database redis",
+    "services:up": "docker compose up -d database redis rabbitmq python-gateway",
     "services:down": "docker compose down",
-    "services:reset": "docker compose down -v && docker compose up -d database redis",
+    "services:reset": "docker compose down -v && docker compose up -d database redis rabbitmq python-gateway --build",
     "kill-ports": "lsof -ti:3001 -ti:5173 -ti:5174 | xargs kill -9 2>/dev/null || true",
     "db:migrate": "echo 'Using TypeORM for migrations'",
     "db:seed": "echo 'Using TypeORM for seeding'"
