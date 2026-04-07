@@ -83,7 +83,8 @@ app.use(helmet({
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // In development, allow all origins
+    if (NODE_ENV === 'development' || !origin || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
       callback(new Error('Not allowed by CORS'))
