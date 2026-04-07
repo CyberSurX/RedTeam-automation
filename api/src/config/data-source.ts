@@ -15,11 +15,11 @@ import { ApiKey } from '../entities/ApiKey.js'
 
 export const AppDataSource = new DataSource({
     type: "postgres",
-    host: process.env.POSTGRES_HOST || "localhost",
-    port: parseInt(process.env.POSTGRES_PORT || "5433"),
-    username: process.env.POSTGRES_USER || "postgres",
-    password: process.env.POSTGRES_PASSWORD || "postgres",
-    database: process.env.POSTGRES_DB || "redteam_automation",
+    host: "localhost",
+    port: 5433,
+    username: "postgres",
+    password: "postgres",
+    database: "redteam_automation",
     synchronize: process.env.NODE_ENV !== "production",
     logging: process.env.NODE_ENV !== "production",
     entities: [User, Program, Finding, Report, Mission, TaskResult, ScopeAgreement, AgentHealth, AuditLog, Job, JobLog, ApiKey],
