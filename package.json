@@ -26,6 +26,7 @@
     "test:security": "node scripts/security-test.js",
     "services:up": "docker compose up -d database redis",
     "services:down": "docker compose down",
+    "services:reset": "docker compose down -v && docker compose up -d database redis",
     "db:migrate": "echo 'Using TypeORM for migrations'",
     "db:seed": "echo 'Using TypeORM for seeding'"
   },
